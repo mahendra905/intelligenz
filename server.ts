@@ -1,8 +1,8 @@
+import path from 'path';
 import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import express, { Request, Response, NextFunction } from 'express';
-import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
