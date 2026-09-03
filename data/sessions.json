@@ -1,0 +1,13 @@
+[
+  {
+    "token": "session_test_1788440712729",
+    "userId": "usr-admin-primary",
+    "username": "superadmin",
+    "email": "mahibittu2006@gmail.com",
+    "role": "SUPER_ADMIN",
+    "createdAt": 1788440712729,
+    "lastActivityAt": 1788440712729,
+    "expiresAt": 1788469512729,
+    "mustChangePassword": false
+  }
+]

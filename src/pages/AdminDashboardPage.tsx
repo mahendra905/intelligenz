@@ -64,6 +64,8 @@ import { AdminCertificatesTab } from '../components/admin/AdminCertificatesTab';
 import { AdminAttendanceTab } from '../components/admin/AdminAttendanceTab';
 import { AdminNewsletterTab } from '../components/admin/AdminNewsletterTab';
 import { AdminResourcesTab } from '../components/admin/AdminResourcesTab';
+import { SessionWarningModal } from '../components/SessionWarningModal';
+import { useAdminSession } from '../lib/adminSession';
 import { authStorage } from '../lib/api';
 
 interface AdminDashboardPageProps {
@@ -102,6 +104,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
+  // Automatic Admin Session Expiration Hook (15-min idle, 8-hr max, cross-tab synced)
+  const {
+    isWarningOpen,
+    remainingMs,
+    isVerifying,
+    staySignedIn,
+    signOutNow,
+  } = useAdminSession(onLogout);
+
   // Current logged in admin profile
   const [currentUser, setCurrentUser] = useState<any>(() => authStorage.getUser());
   const [currentAdminRole, setCurrentAdminRole] = useState<string>(() => {
@@ -133,7 +144,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  const loadAllData = async () => {
+  const loadAllData = async (isStillValid?: () => boolean) => {
     try {
       const [
         evRes,
@@ -167,6 +178,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         api.getAdminProfile().catch(() => null),
       ]);
 
+      if (isStillValid && !isStillValid()) return;
+
       setEvents(evRes || []);
       setAnnouncements(annRes || []);
       setProjects(projRes || []);
@@ -185,19 +198,30 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         setCurrentAdminRole(profileRes.role);
         setCurrentUser(profileRes);
         authStorage.setUser(profileRes);
-      } else if (!authStorage.getToken()) {
-        onLogout();
       }
     } catch (err: any) {
       console.error('Error fetching admin data:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStillValid || isStillValid()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadAllData();
+    let isMounted = true;
+
+    const run = async () => {
+      if (!isMounted || !authStorage.isAuthenticated()) return;
+      await loadAllData(() => isMounted && authStorage.isAuthenticated());
+    };
+
+    run();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleManualRefresh = async () => {
@@ -878,6 +902,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
         </main>
       </div>
+
+      {/* Session Expiration Warning Modal (2-minute warning before 15m inactivity timeout) */}
+      <SessionWarningModal
+        isOpen={isWarningOpen}
+        remainingMs={remainingMs}
+        onStaySignedIn={staySignedIn}
+        onSignOut={signOutNow}
+        isVerifying={isVerifying}
+      />
 
       {/* Sign Out Confirmation Modal */}
       <SignOutConfirmModal

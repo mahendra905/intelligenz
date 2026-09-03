@@ -150,6 +150,9 @@ export interface EventRegistration {
   team_members?: TeamMemberRegistration[];
   team_size?: number;
   status: 'Confirmed' | 'Waitlisted' | 'Cancelled' | 'Attended';
+  ticket_code?: string;
+  qr_token?: string;
+  qr_payload?: string;
   registered_at?: string;
   created_at: string;
 }
@@ -386,7 +389,80 @@ export interface AttendanceRecord {
   email: string;
   department: string;
   checked_in_at: string;
-  checkin_method: 'QR Code' | 'Code Entry' | 'Manual';
+  checkin_method: 'QR Code' | 'Code Entry' | 'Manual' | 'Rapid Scanner' | 'Admin Terminal' | string;
+}
+
+export interface AttendanceParticipantInfo {
+  name: string;
+  roll_number: string;
+  email: string;
+  department: string;
+  year?: string;
+  is_leader?: boolean;
+  team_name?: string;
+  participation_type?: ParticipationType;
+}
+
+export interface AttendanceVerificationResult {
+  status: 'eligible' | 'already_checked_in' | 'wrong_event' | 'not_found' | 'not_eligible';
+  error?: string;
+  message?: string;
+  participant?: AttendanceParticipantInfo;
+  registration?: {
+    id: string;
+    event_id: string;
+    status: string;
+    team_name?: string;
+    participation_type?: ParticipationType;
+  };
+  event?: {
+    id: string;
+    title: string;
+    date: string;
+    venue: string;
+    start_time?: string;
+  };
+  ticket_code?: string;
+  record?: AttendanceRecord;
+  registered_event_id?: string;
+  registered_event_title?: string;
+  selected_event_id?: string;
+  selected_event_title?: string;
+  reason?: string;
+}
+
+export interface AttendanceRosterItem {
+  registration_id: string;
+  ticket_code: string;
+  participant_name: string;
+  roll_number: string;
+  email: string;
+  department: string;
+  year: string;
+  registration_status: string;
+  team_name?: string;
+  is_leader: boolean;
+  checked_in: boolean;
+  checked_in_at?: string;
+  checkin_method?: string;
+  checkin_id?: string;
+}
+
+export interface AttendanceRosterResponse {
+  event?: {
+    id: string;
+    title: string;
+    date: string;
+    start_time?: string;
+    venue?: string;
+  };
+  stats: {
+    registered: number;
+    checked_in: number;
+    remaining: number;
+    attendance_rate: number;
+  };
+  roster: AttendanceRosterItem[];
 }
 
 export interface LearningResource {

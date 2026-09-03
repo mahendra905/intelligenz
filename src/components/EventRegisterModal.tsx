@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Event, TeamMemberRegistration } from '../types';
 import { api } from '../lib/api';
-import { X, Sparkles, CheckCircle2, AlertCircle, Loader2, Calendar, MapPin, Users, UserPlus, Trash2, ShieldCheck, User } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, AlertCircle, Loader2, Calendar, MapPin, Users, UserPlus, Trash2, ShieldCheck, User, Download, Printer, QrCode, Copy, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import QRCode from 'qrcode';
 
 interface EventRegisterModalProps {
   event: Event | null;
@@ -32,10 +33,241 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<any | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copiedTicket, setCopiedTicket] = useState(false);
 
   const pType = event?.participation_type || 'SOLO';
   const minTeam = event?.min_team_size || (pType === 'SOLO' ? 1 : 2);
   const maxTeam = event?.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4);
+
+  // Generate QR Code ONLY after successful registration is confirmed
+  useEffect(() => {
+    if (successData?.registration && successData.registration.status === 'Confirmed') {
+      const reg = successData.registration;
+      const payload =
+        successData.qr_payload ||
+        reg.qr_payload ||
+        (successData.qr_token ? `ATTENDANCE:${successData.qr_token}` : (reg.qr_token ? `ATTENDANCE:${reg.qr_token}` : `ATTENDANCE:${reg.id}`));
+
+      QRCode.toDataURL(payload, {
+        width: 320,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+        errorCorrectionLevel: 'H',
+      })
+        .then((url) => {
+          setQrDataUrl(url);
+        })
+        .catch((err) => {
+          console.error('Error generating QR code:', err);
+        });
+    } else {
+      setQrDataUrl(null);
+    }
+  }, [successData]);
+
+  // Download official high-resolution event ticket image
+  const handleDownloadTicket = () => {
+    if (!qrDataUrl || !event) return;
+    const ticketCode =
+      successData?.ticket_code ||
+      successData?.registration?.ticket_code ||
+      (successData?.registration?.id ? `TKT-${successData.registration.id.slice(-6).toUpperCase()}` : 'TKT-PASS');
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = 600;
+    canvas.height = 760;
+
+    // Background
+    ctx.fillStyle = '#0D1017';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Outer border
+    ctx.strokeStyle = '#1A1C23';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+
+    // Header strip
+    ctx.fillStyle = '#121620';
+    ctx.fillRect(16, 16, canvas.width - 32, 90);
+
+    // Header branding
+    ctx.fillStyle = '#00E5FF';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('INTELLIGENZ CLUB', canvas.width / 2, 48);
+
+    ctx.fillStyle = '#9CA3AF';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('OFFICIAL EVENT ATTENDANCE PASS', canvas.width / 2, 70);
+
+    ctx.fillStyle = '#E5E7EB';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(ticketCode, canvas.width / 2, 92);
+
+    // Event title
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 17px sans-serif';
+    const eventTitle = event.title.length > 44 ? event.title.substring(0, 41) + '...' : event.title;
+    ctx.fillText(eventTitle, canvas.width / 2, 138);
+
+    // Event date & venue
+    ctx.fillStyle = '#9CA3AF';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`${event.date} • ${event.start_time}`, canvas.width / 2, 162);
+    const venueText = event.venue.length > 55 ? event.venue.substring(0, 52) + '...' : event.venue;
+    ctx.fillText(venueText, canvas.width / 2, 182);
+
+    // Draw QR Image
+    const qrImg = new Image();
+    qrImg.onload = () => {
+      const qrSize = 280;
+      const qrX = (canvas.width - qrSize) / 2;
+      const qrY = 210;
+
+      // QR white frame
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // Participant info panel
+      ctx.fillStyle = '#0A0B0E';
+      ctx.fillRect(36, 525, canvas.width - 72, 130);
+      ctx.strokeStyle = '#1A1C23';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(36, 525, canvas.width - 72, 130);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#6B7280';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('PARTICIPANT:', 56, 555);
+      ctx.fillText('ROLL NUMBER:', 56, 585);
+      ctx.fillText('DEPARTMENT:', 56, 615);
+      ctx.fillText('PASS TYPE:', 56, 642);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 13px sans-serif';
+      const nameStr = pType !== 'SOLO' ? `${fullName} (Team: ${teamName})` : fullName;
+      ctx.fillText(nameStr.substring(0, 36), 180, 555);
+      ctx.fillStyle = '#00E5FF';
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(rollNumber, 180, 585);
+      ctx.fillStyle = '#D1D5DB';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(department, 180, 615);
+      ctx.fillStyle = '#A78BFA';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`${pType} (${totalCurrentMembers} Members)`, 180, 642);
+
+      // Bottom verification prompt
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#10B981';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('✓ Scan QR code at entrance for automated check-in', canvas.width / 2, 695);
+
+      const link = document.createElement('a');
+      link.download = `event-ticket-${ticketCode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    qrImg.src = qrDataUrl;
+  };
+
+  // Print official scanner-friendly ticket
+  const handlePrintTicket = () => {
+    if (!qrDataUrl || !event) return;
+    const ticketCode =
+      successData?.ticket_code ||
+      successData?.registration?.ticket_code ||
+      (successData?.registration?.id ? `TKT-${successData.registration.id.slice(-6).toUpperCase()}` : 'TKT-PASS');
+
+    const printWindow = window.open('', '_blank', 'width=650,height=800');
+    if (!printWindow) {
+      alert('Please allow popups to print your event ticket.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Event Attendance Pass - ${ticketCode}</title>
+          <style>
+            @page { size: auto; margin: 15mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #111; padding: 24px; text-align: center; }
+            .ticket-card { border: 2px solid #111; border-radius: 12px; padding: 24px; max-width: 460px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            .header { border-bottom: 2px dashed #ccc; padding-bottom: 14px; margin-bottom: 16px; }
+            .club-name { font-size: 19px; font-weight: 800; letter-spacing: 1px; color: #000; }
+            .sub { font-size: 11px; color: #666; text-transform: uppercase; margin-top: 4px; }
+            .ticket-badge { display: inline-block; background: #000; color: #fff; font-family: monospace; font-size: 14px; font-weight: bold; padding: 4px 14px; border-radius: 4px; margin-top: 10px; }
+            .event-title { font-size: 17px; font-weight: bold; margin: 14px 0 6px; color: #111; }
+            .event-meta { font-size: 12px; color: #555; margin-bottom: 16px; line-height: 1.4; }
+            .qr-wrapper { margin: 12px auto; padding: 12px; background: #fff; border: 1px solid #ddd; display: inline-block; border-radius: 8px; }
+            .qr-img { width: 230px; height: 230px; display: block; }
+            .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; margin-top: 16px; }
+            .details-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+            .details-table td.label { color: #666; width: 35%; font-weight: 500; }
+            .details-table td.val { font-weight: bold; color: #111; }
+            .footer-note { font-size: 11px; color: #059669; font-weight: bold; margin-top: 18px; border-top: 2px dashed #ccc; padding-top: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-card">
+            <div class="header">
+              <div class="club-name">INTELLIGENZ CLUB</div>
+              <div class="sub">DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY</div>
+              <div class="ticket-badge">${ticketCode}</div>
+            </div>
+            <div class="event-title">${event.title}</div>
+            <div class="event-meta">${event.date} • ${event.start_time}<br/>${event.venue}</div>
+            <div class="qr-wrapper">
+              <img class="qr-img" src="${qrDataUrl}" alt="Attendance Verification QR Code" />
+            </div>
+            <table class="details-table">
+              <tr>
+                <td class="label">Participant</td>
+                <td class="val">${fullName} ${pType !== 'SOLO' ? `(Team: ${teamName})` : ''}</td>
+              </tr>
+              <tr>
+                <td class="label">Roll Number</td>
+                <td class="val">${rollNumber}</td>
+              </tr>
+              <tr>
+                <td class="label">Department</td>
+                <td class="val">${department} (${year})</td>
+              </tr>
+              <tr>
+                <td class="label">Attendance Status</td>
+                <td class="val" style="color: #059669;">Confirmed (Eligible for Check-In)</td>
+              </tr>
+            </table>
+            <div class="footer-note">
+              ✓ Scan at event entrance for instant automated check-in
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleCopyTicketCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedTicket(true);
+    setTimeout(() => setCopiedTicket(false), 2000);
+  };
 
   // Initialize members when event changes
   useEffect(() => {
@@ -172,43 +404,151 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
         </button>
 
         {successData ? (
-          <div className="text-center py-6 space-y-4">
-            <div className="inline-flex p-4 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-1">
-              <CheckCircle2 className="w-12 h-12 animate-bounce" />
+          <div className="py-2 sm:py-4 space-y-4">
+            <div className="text-center space-y-2">
+              <div className="inline-flex p-3 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <CheckCircle2 className="w-9 h-9 animate-bounce" />
+              </div>
+              <h3 className="text-2xl font-bold text-white font-['Outfit']">
+                {successData.registration?.status === 'Confirmed' ? 'Registration Confirmed!' : 'Registration Waitlisted'}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#9CA3AF] max-w-md mx-auto">
+                {pType !== 'SOLO' ? (
+                  <>
+                    Team <span className="text-[#00E5FF] font-semibold">{teamName}</span> ({totalCurrentMembers} Members) registered for <span className="text-white font-medium">{event.title}</span>.
+                  </>
+                ) : (
+                  <>
+                    <span className="text-white font-semibold">{fullName}</span> (Roll: <span className="font-mono text-[#00E5FF]">{rollNumber}</span>) registered for <span className="text-white font-medium">{event.title}</span>.
+                  </>
+                )}
+              </p>
             </div>
-            <h3 className="text-2xl font-bold text-white font-['Outfit']">
-              Registration Confirmed!
-            </h3>
-            <p className="text-sm text-[#9CA3AF] max-w-md mx-auto">
-              {pType !== 'SOLO' ? (
-                <>
-                  Team <span className="text-[#00E5FF] font-semibold">{teamName}</span> ({totalCurrentMembers} Members) has been successfully registered for <span className="text-white font-medium">{event.title}</span>.
-                </>
-              ) : (
-                <>
-                  <span className="text-white font-semibold">{fullName}</span> (Roll: <span className="font-mono text-[#00E5FF]">{rollNumber}</span>) has been registered for <span className="text-white font-medium">{event.title}</span>.
-                </>
-              )}
-            </p>
 
-            <div className="p-4 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] text-left text-xs space-y-2 text-[#D1D5DB]">
-              <div className="flex justify-between border-b border-[#1A1C23] pb-2">
-                <span className="text-[#6B7280]">Participation Type:</span>
-                <span className="font-bold text-[#00E5FF]">{pType} ({totalCurrentMembers} {totalCurrentMembers === 1 ? 'Participant' : 'Members'})</span>
+            {/* If Confirmed: Show Unique Attendance QR Pass Card */}
+            {successData.registration?.status === 'Confirmed' ? (
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#08090C] border border-[#1E222D] shadow-inner space-y-4">
+                {/* Ticket ID Badge */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1A1D27] pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">Attendance Ticket:</span>
+                    <span className="font-mono font-bold text-[#00E5FF] text-sm bg-[#00E5FF]/10 px-2.5 py-0.5 rounded border border-[#00E5FF]/20">
+                      {successData.ticket_code || successData.registration?.ticket_code || `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleCopyTicketCode(
+                        successData.ticket_code ||
+                          successData.registration?.ticket_code ||
+                          `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`
+                      )
+                    }
+                    className="inline-flex items-center gap-1 text-[11px] text-[#9CA3AF] hover:text-white transition-colors"
+                  >
+                    {copiedTicket ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Code</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* QR Code Container */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-[#0E1118] p-4 rounded-xl border border-[#1F2330]">
+                  <div className="relative p-2.5 bg-white rounded-xl shadow-lg shrink-0">
+                    {qrDataUrl ? (
+                      <img
+                        src={qrDataUrl}
+                        alt="Attendance QR Code"
+                        className="w-40 h-40 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-40 h-40 flex flex-col items-center justify-center text-gray-500 bg-gray-100 rounded">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#00E5FF] mb-1" />
+                        <span className="text-[10px] font-medium">Generating QR...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-left space-y-2 text-xs w-full">
+                    <div>
+                      <div className="text-[10px] uppercase text-[#6B7280] font-semibold tracking-wider">Event</div>
+                      <div className="text-white font-bold text-sm leading-tight line-clamp-1">{event.title}</div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1F2330]">
+                      <div>
+                        <div className="text-[10px] uppercase text-[#6B7280] font-medium">Participant</div>
+                        <div className="text-[#E5E7EB] font-semibold truncate">
+                          {pType !== 'SOLO' ? `${fullName} (${teamName})` : fullName}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase text-[#6B7280] font-medium">Roll Number</div>
+                        <div className="font-mono text-[#00E5FF] font-semibold">{rollNumber}</div>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 border-t border-[#1F2330]">
+                      <div className="text-[10px] uppercase text-[#6B7280] font-medium">Venue & Time</div>
+                      <div className="text-[#9CA3AF] text-[11px] truncate">
+                        {event.date} • {event.start_time} ({event.venue})
+                      </div>
+                    </div>
+
+                    <div className="pt-1 text-[11px] text-emerald-400 font-medium flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Ready for entrance check-in</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guidance text */}
+                <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-left text-xs text-[#A7F3D0] flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed text-[#D1D5DB]">
+                    <strong className="text-white">Keep this QR ready:</strong> Present this QR code on your phone or print it. The event coordinator will scan it with the scanner for instant automated check-in.
+                  </p>
+                </div>
+
+                {/* Download and Print Action Buttons */}
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDownloadTicket}
+                    disabled={!qrDataUrl}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] text-white text-xs font-semibold transition-all disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4 text-[#00E5FF]" />
+                    <span>Download Pass</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintTicket}
+                    disabled={!qrDataUrl}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] text-white text-xs font-semibold transition-all disabled:opacity-50"
+                  >
+                    <Printer className="w-4 h-4 text-[#A78BFA]" />
+                    <span>Print Ticket</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-[#1A1C23] pb-2">
-                <span className="text-[#6B7280]">Status:</span>
-                <span className="font-bold text-emerald-400">{successData.registration?.status || 'Confirmed'}</span>
+            ) : (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-left text-xs space-y-2 text-amber-200">
+                <p className="font-semibold text-white">Notice: Event Capacity Reached</p>
+                <p className="text-[#D1D5DB] leading-relaxed">
+                  Your registration has been placed on the waitlist. An attendance QR ticket will be issued if your registration is confirmed by event coordinators.
+                </p>
               </div>
-              <div className="flex justify-between border-b border-[#1A1C23] pb-2">
-                <span className="text-[#6B7280]">Date & Time:</span>
-                <span>{event.date} at {event.start_time}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#6B7280]">Venue:</span>
-                <span className="truncate max-w-[280px]">{event.venue}</span>
-              </div>
-            </div>
+            )}
 
             <button
               onClick={handleClose}

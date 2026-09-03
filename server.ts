@@ -1,4 +1,5 @@
 import path from 'path';
+import http from 'http';
 import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
@@ -281,7 +282,17 @@ function loadDatabase(): DatabaseSchema {
         achievements: parsed.achievements || INITIAL_ACHIEVEMENTS,
         gallery: parsed.gallery || INITIAL_GALLERY,
         join_applications: parsed.join_applications || [],
-        registrations: parsed.registrations || [],
+        registrations: (parsed.registrations || []).map((r: any) => {
+          const ticketCode = r.ticket_code || `TKT-${r.id.slice(-6).toUpperCase()}`;
+          const qrToken = r.qr_token || `qrat_${r.id.replace(/^reg-/, '').replace(/[^a-zA-Z0-9]/g, '')}_${ticketCode.replace(/^TKT-/, '')}`.toLowerCase();
+          const qrPayload = r.qr_payload || `ATTENDANCE:${qrToken}`;
+          return {
+            ...r,
+            ticket_code: ticketCode,
+            qr_token: qrToken,
+            qr_payload: qrPayload,
+          };
+        }),
         messages: parsed.messages || [],
         admin_users: adminUsers,
         certificates: parsed.certificates || INITIAL_CERTIFICATES,
@@ -401,6 +412,16 @@ function rateLimiter(limit: number, windowMs: number) {
   };
 }
 
+// ==========================================================
+// Configurable Session Timeout Settings
+// ==========================================================
+// 15 minutes inactivity timeout (900,000 ms)
+const ADMIN_IDLE_TIMEOUT = parseInt(process.env.ADMIN_IDLE_TIMEOUT || '', 10) || 15 * 60 * 1000;
+// 8 hours absolute maximum lifetime (28,800,000 ms)
+const ADMIN_MAX_SESSION_LIFETIME = parseInt(process.env.ADMIN_MAX_SESSION_LIFETIME || '', 10) || 8 * 60 * 60 * 1000;
+// 2 minutes session warning threshold (120,000 ms)
+const ADMIN_SESSION_WARNING = parseInt(process.env.ADMIN_SESSION_WARNING || '', 10) || 2 * 60 * 1000;
+
 // Active session storage
 interface ActiveSession {
   token: string;
@@ -408,6 +429,8 @@ interface ActiveSession {
   username: string;
   email: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'EDITOR';
+  createdAt: number;
+  lastActivityAt: number;
   expiresAt: number;
   mustChangePassword?: boolean;
 }
@@ -423,8 +446,22 @@ function loadSessions(): Map<string, ActiveSession> {
       if (Array.isArray(arr)) {
         const now = Date.now();
         for (const s of arr) {
-          if (s && s.token && s.expiresAt > now) {
-            map.set(s.token, s);
+          if (s && s.token) {
+            const createdAt = typeof s.createdAt === 'number' ? s.createdAt : now;
+            const lastActivityAt = typeof s.lastActivityAt === 'number' ? s.lastActivityAt : now;
+            const absoluteExpiresAt = typeof s.expiresAt === 'number' ? s.expiresAt : (createdAt + ADMIN_MAX_SESSION_LIFETIME);
+
+            const isIdleExpired = (now - lastActivityAt) > ADMIN_IDLE_TIMEOUT;
+            const isAbsoluteExpired = (now - createdAt) > ADMIN_MAX_SESSION_LIFETIME || absoluteExpiresAt <= now;
+
+            if (!isIdleExpired && !isAbsoluteExpired) {
+              map.set(s.token, {
+                ...s,
+                createdAt,
+                lastActivityAt,
+                expiresAt: absoluteExpiresAt,
+              });
+            }
           }
         }
       }
@@ -437,11 +474,25 @@ function loadSessions(): Map<string, ActiveSession> {
 
 function saveSessions(sessionsMap: Map<string, ActiveSession>) {
   try {
-    const list = Array.from(sessionsMap.values()).filter((s) => s.expiresAt > Date.now());
+    const now = Date.now();
+    const list = Array.from(sessionsMap.values()).filter((s) => {
+      const isIdleExpired = (now - s.lastActivityAt) > ADMIN_IDLE_TIMEOUT;
+      const isAbsoluteExpired = (now - s.createdAt) > ADMIN_MAX_SESSION_LIFETIME || s.expiresAt <= now;
+      return !isIdleExpired && !isAbsoluteExpired;
+    });
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
   } catch (err) {
     console.error('Error saving sessions file:', err);
   }
+}
+
+let saveSessionsTimeout: NodeJS.Timeout | null = null;
+function throttledSaveSessions() {
+  if (saveSessionsTimeout) return;
+  saveSessionsTimeout = setTimeout(() => {
+    saveSessionsTimeout = null;
+    saveSessions(activeSessions);
+  }, 10000);
 }
 
 const activeSessions = loadSessions();
@@ -455,32 +506,78 @@ function invalidateUserSessions(userId: string) {
   saveSessions(activeSessions);
 }
 
-function adminAuthMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Unauthorized: Admin authentication token required.' });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)intelligenz_session=([^;]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+  return null;
+}
+
+function adminAuthMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  const token = extractToken(req);
+  if (!token) {
+    res.status(401).json({ error: 'Unauthorized: Admin authentication token required.', code: 'UNAUTHORIZED' });
     return;
   }
-  const token = authHeader.split(' ')[1];
 
   const session = activeSessions.get(token);
-  if (!session || session.expiresAt <= Date.now()) {
-    if (session) {
-      activeSessions.delete(token);
-      saveSessions(activeSessions);
-    }
-    res.status(401).json({ error: 'Session expired or invalid. Please sign in again.' });
+  if (!session) {
+    res.clearCookie('intelligenz_session', { path: '/' });
+    res.status(401).json({ error: 'Session expired or invalid. Please sign in again.', code: 'SESSION_INVALID' });
     return;
   }
 
-  // Lookup user in current database to verify active status & current role
+  const now = Date.now();
+
+  // 1. Check absolute session lifetime (8 hours default)
+  const sessionCreatedAt = session.createdAt || session.lastActivityAt || now;
+  if ((now - sessionCreatedAt) > ADMIN_MAX_SESSION_LIFETIME || (session.expiresAt && session.expiresAt <= now)) {
+    activeSessions.delete(token);
+    saveSessions(activeSessions);
+    res.clearCookie('intelligenz_session', { path: '/' });
+    logAdminAction('Session Expired', 'Auth', session.userId, 'Session reached maximum lifetime limit (8 hours)', session.email, req);
+    res.status(401).json({
+      error: 'Session expired: Maximum session lifetime reached (8 hours). Please sign in again.',
+      code: 'SESSION_MAX_LIFETIME',
+    });
+    return;
+  }
+
+  // 2. Check inactivity timeout (15 minutes default)
+  const sessionLastActivity = session.lastActivityAt || now;
+  if ((now - sessionLastActivity) > ADMIN_IDLE_TIMEOUT) {
+    activeSessions.delete(token);
+    saveSessions(activeSessions);
+    res.clearCookie('intelligenz_session', { path: '/' });
+    logAdminAction('Session Expired', 'Auth', session.userId, 'Session expired due to 15 minutes of inactivity', session.email, req);
+    res.status(401).json({
+      error: 'Session expired due to 15 minutes of inactivity. Please sign in again.',
+      code: 'SESSION_IDLE_TIMEOUT',
+    });
+    return;
+  }
+
+  // 3. Lookup user in current database to verify active status & current role
   const dbUser = db.admin_users.find((u) => u.id === session.userId);
   if (!dbUser || dbUser.status !== 'ACTIVE') {
     activeSessions.delete(token);
     saveSessions(activeSessions);
-    res.status(403).json({ error: 'Access denied: Administrator account is not active or has been revoked.' });
+    res.clearCookie('intelligenz_session', { path: '/' });
+    res.status(403).json({ error: 'Access denied: Administrator account is not active or has been revoked.', code: 'ACCOUNT_INACTIVE' });
     return;
   }
+
+  // Session is fully valid: update lastActivityAt
+  session.lastActivityAt = now;
+  throttledSaveSessions();
 
   req.adminUser = {
     id: dbUser.id,
@@ -514,6 +611,7 @@ function requireRole(...allowedRoles: Array<'SUPER_ADMIN' | 'ADMIN' | 'EDITOR'>)
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  const httpServer = http.createServer(app);
 
   // Support up to 75MB request payload to allow 50MB binary uploads via base64 safely
   app.use(express.json({ limit: '75mb' }));
@@ -894,8 +992,14 @@ async function startServer() {
     const isFull = event.current_participants + totalParticipants > event.maximum_participants;
     const regStatus = isFull ? 'Waitlisted' : 'Confirmed';
 
+    const regId = `reg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const ticketCode = `TKT-${regId.slice(-6).toUpperCase()}`;
+    // Secure unique attendance token generated ONLY after successful registration
+    const qrToken = `qrat_${crypto.randomBytes(16).toString('hex')}`;
+    const qrPayload = `ATTENDANCE:${qrToken}`;
+
     const newReg: EventRegistration = {
-      id: `reg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      id: regId,
       event_id: event.id,
       event_title: event.title,
       participation_type: participationType,
@@ -911,6 +1015,9 @@ async function startServer() {
       team_members: finalMembers.length > 0 ? finalMembers : undefined,
       team_size: totalParticipants,
       status: regStatus,
+      ticket_code: regStatus === 'Confirmed' ? ticketCode : undefined,
+      qr_token: regStatus === 'Confirmed' ? qrToken : undefined,
+      qr_payload: regStatus === 'Confirmed' ? qrPayload : undefined,
       registered_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
@@ -925,6 +1032,9 @@ async function startServer() {
         participationType !== 'SOLO' ? `Team '${teamName}' registered` : `Registered`
       } with status: ${regStatus}.`,
       registration: newReg,
+      ticket_code: newReg.ticket_code,
+      qr_token: newReg.qr_token,
+      qr_payload: newReg.qr_payload,
     });
   });
 
@@ -1318,19 +1428,31 @@ async function startServer() {
     adminUser.updated_at = new Date().toISOString();
     saveDatabase(db);
 
-    // Issue cryptographically secure session token (24 hours expiry)
+    // Issue cryptographically secure session token with idle and max lifetime bounds
+    const now = Date.now();
     const sessionToken = `session_${crypto.randomBytes(32).toString('hex')}`;
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    const expiresAt = now + ADMIN_MAX_SESSION_LIFETIME;
     activeSessions.set(sessionToken, {
       token: sessionToken,
       userId: adminUser.id,
       username: adminUser.username,
       email: adminUser.email,
       role: adminUser.role,
+      createdAt: now,
+      lastActivityAt: now,
       expiresAt,
       mustChangePassword: !!adminUser.must_change_password,
     });
     saveSessions(activeSessions);
+
+    // Set secure HTTP-only cookie with same max age
+    res.cookie('intelligenz_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: ADMIN_MAX_SESSION_LIFETIME,
+      path: '/',
+    });
 
     logAdminAction(
       'Admin Login Success',
@@ -1344,6 +1466,10 @@ async function startServer() {
     res.json({
       success: true,
       token: sessionToken,
+      sessionStart: now,
+      idleTimeout: ADMIN_IDLE_TIMEOUT,
+      maxLifetime: ADMIN_MAX_SESSION_LIFETIME,
+      warningDuration: ADMIN_SESSION_WARNING,
       mustChangePassword: !!adminUser.must_change_password,
       user: {
         id: adminUser.id,
@@ -1357,41 +1483,128 @@ async function startServer() {
     });
   });
 
+  app.get('/api/auth/session-config', (_req, res) => {
+    res.json({
+      idleTimeout: ADMIN_IDLE_TIMEOUT,
+      maxLifetime: ADMIN_MAX_SESSION_LIFETIME,
+      warningDuration: ADMIN_SESSION_WARNING,
+    });
+  });
+
   app.get('/api/auth/verify', (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractToken(req);
+    if (!token) {
       res.status(401).json({ valid: false, error: 'No authorization token provided.' });
       return;
     }
 
-    const token = authHeader.split(' ')[1];
     const session = activeSessions.get(token);
-    if (session && session.expiresAt > Date.now()) {
-      const user = db.admin_users.find((u) => u.id === session.userId);
-      if (user && user.status === 'ACTIVE') {
-        res.json({
-          valid: true,
-          user: {
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            status: user.status,
-            mustChangePassword: !!user.must_change_password,
-          },
-        });
-        return;
-      }
+    if (!session) {
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ valid: false, error: 'Session expired or invalid.' });
+      return;
     }
 
-    res.status(401).json({ valid: false, error: 'Unauthorized or expired session.' });
+    const now = Date.now();
+    const sessionCreatedAt = session.createdAt || session.lastActivityAt || now;
+    if ((now - sessionCreatedAt) > ADMIN_MAX_SESSION_LIFETIME || (session.expiresAt && session.expiresAt <= now)) {
+      activeSessions.delete(token);
+      saveSessions(activeSessions);
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ valid: false, error: 'Session reached maximum lifetime limit (8 hours).', code: 'SESSION_MAX_LIFETIME' });
+      return;
+    }
+
+    const sessionLastActivity = session.lastActivityAt || now;
+    if ((now - sessionLastActivity) > ADMIN_IDLE_TIMEOUT) {
+      activeSessions.delete(token);
+      saveSessions(activeSessions);
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ valid: false, error: 'Session expired due to 15 minutes of inactivity.', code: 'SESSION_IDLE_TIMEOUT' });
+      return;
+    }
+
+    const user = db.admin_users.find((u) => u.id === session.userId);
+    if (!user || user.status !== 'ACTIVE') {
+      activeSessions.delete(token);
+      saveSessions(activeSessions);
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(403).json({ valid: false, error: 'User account is inactive or revoked.' });
+      return;
+    }
+
+    // Refresh lastActivity timestamp
+    session.lastActivityAt = now;
+    throttledSaveSessions();
+
+    res.json({
+      valid: true,
+      sessionStart: sessionCreatedAt,
+      lastActivityAt: now,
+      idleTimeout: ADMIN_IDLE_TIMEOUT,
+      maxLifetime: ADMIN_MAX_SESSION_LIFETIME,
+      warningDuration: ADMIN_SESSION_WARNING,
+      remainingIdleMs: Math.max(0, ADMIN_IDLE_TIMEOUT - (now - session.lastActivityAt)),
+      remainingLifetimeMs: Math.max(0, (sessionCreatedAt + ADMIN_MAX_SESSION_LIFETIME) - now),
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        mustChangePassword: !!user.must_change_password,
+      },
+    });
+  });
+
+  app.post('/api/auth/stay-signed-in', (req, res) => {
+    const token = extractToken(req);
+    if (!token) {
+      res.status(401).json({ error: 'No authorization token provided.', code: 'UNAUTHORIZED' });
+      return;
+    }
+
+    const session = activeSessions.get(token);
+    if (!session) {
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ error: 'Session expired or invalid. Please sign in again.', code: 'SESSION_INVALID' });
+      return;
+    }
+
+    const now = Date.now();
+    const sessionCreatedAt = session.createdAt || session.lastActivityAt || now;
+    if ((now - sessionCreatedAt) > ADMIN_MAX_SESSION_LIFETIME || (session.expiresAt && session.expiresAt <= now)) {
+      activeSessions.delete(token);
+      saveSessions(activeSessions);
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ error: 'Session reached maximum lifetime limit (8 hours).', code: 'SESSION_MAX_LIFETIME' });
+      return;
+    }
+
+    const sessionLastActivity = session.lastActivityAt || now;
+    if ((now - sessionLastActivity) > ADMIN_IDLE_TIMEOUT) {
+      activeSessions.delete(token);
+      saveSessions(activeSessions);
+      res.clearCookie('intelligenz_session', { path: '/' });
+      res.status(401).json({ error: 'Session expired due to 15 minutes of inactivity.', code: 'SESSION_IDLE_TIMEOUT' });
+      return;
+    }
+
+    // Reset inactivity timer
+    session.lastActivityAt = now;
+    saveSessions(activeSessions);
+
+    res.json({
+      success: true,
+      lastActivityAt: now,
+      remainingLifetimeMs: Math.max(0, (sessionCreatedAt + ADMIN_MAX_SESSION_LIFETIME) - now),
+    });
   });
 
   app.post('/api/auth/logout', (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const token = extractToken(req);
+    if (token) {
       const session = activeSessions.get(token);
       if (session) {
         logAdminAction('Admin Logout', 'Auth', session.userId, `Administrator session signed out for ${session.email}`, session.email, req);
@@ -1399,6 +1612,7 @@ async function startServer() {
         saveSessions(activeSessions);
       }
     }
+    res.clearCookie('intelligenz_session', { path: '/' });
     res.json({ success: true, message: 'Signed out successfully.' });
   });
 
@@ -1510,9 +1724,8 @@ async function startServer() {
     saveDatabase(db);
 
     // Update active session flag
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const token = extractToken(req);
+    if (token) {
       const session = activeSessions.get(token);
       if (session) {
         session.mustChangePassword = false;
@@ -2614,81 +2827,565 @@ async function startServer() {
   // ==========================================
   // ADMIN ATTENDANCE / EVENT CHECK-IN (SUPER_ADMIN, ADMIN)
   // ==========================================
+
+  function sanitizeScanQuery(raw: string): string {
+    let q = (raw || '').trim();
+    if (!q) return '';
+    // Handle JSON payloads from QR codes
+    if (q.startsWith('{') && q.endsWith('}')) {
+      try {
+        const obj = JSON.parse(q);
+        const candidate =
+          obj.token ||
+          obj.qr_token ||
+          obj.attendance_token ||
+          obj.ticket ||
+          obj.ticket_code ||
+          obj.roll_number ||
+          obj.rollNumber ||
+          obj.registration_id ||
+          obj.id ||
+          obj.code;
+        if (candidate) return String(candidate).trim();
+      } catch {
+        // proceed
+      }
+    }
+    // Handle ATTENDANCE:<token> format
+    if (/^attendance:/i.test(q)) {
+      return q.replace(/^attendance:/i, '').trim();
+    }
+    // Handle QR: or TICKET: prefixes
+    if (/^(qr|ticket):/i.test(q)) {
+      return q.replace(/^(qr|ticket):/i, '').trim();
+    }
+    // Handle URL payloads from QR codes
+    if (q.includes('://') || q.startsWith('http')) {
+      try {
+        const url = new URL(q);
+        const queryParam =
+          url.searchParams.get('token') ||
+          url.searchParams.get('qr_token') ||
+          url.searchParams.get('ticket') ||
+          url.searchParams.get('code') ||
+          url.searchParams.get('roll') ||
+          url.searchParams.get('id');
+        if (queryParam) return queryParam.trim();
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length > 0) {
+          const last = parts[parts.length - 1];
+          if (
+            last.toUpperCase().startsWith('TKT-') ||
+            last.startsWith('reg-') ||
+            last.startsWith('qrat_') ||
+            /^[0-9]{2}[A-Z0-9]{8}$/i.test(last)
+          ) {
+            return last.trim();
+          }
+        }
+      } catch {
+        // proceed
+      }
+    }
+    return q;
+  }
+
+  function findParticipantMatch(
+    rawQuery: string,
+    preferredEventId?: string
+  ): {
+    registration: EventRegistration;
+    participant: {
+      name: string;
+      roll_number: string;
+      email: string;
+      department: string;
+      year?: string;
+      is_leader: boolean;
+      team_name?: string;
+      participation_type: string;
+    };
+  } | null {
+    const rawTrimmed = (rawQuery || '').trim();
+    const rawTrimmedLower = rawTrimmed.toLowerCase();
+    const sanitized = sanitizeScanQuery(rawTrimmed);
+    const term = sanitized.toLowerCase();
+    if (!term && !rawTrimmedLower) return null;
+
+    const normTermUpper = term.toUpperCase();
+    const withoutTkt = term.replace(/^tkt-?/i, '');
+
+    // Function to test if a given registration matches the query
+    const checkRegistration = (r: EventRegistration) => {
+      const regIdLower = r.id.toLowerCase();
+      const ticketSuffix = r.id.slice(-6).toLowerCase();
+      const ticketSuffix4 = r.id.slice(-4).toLowerCase();
+      const ticketCodeLower = (r.ticket_code || `tkt-${ticketSuffix}`).toLowerCase();
+      const qrTokenLower = (r.qr_token || '').toLowerCase();
+      const qrPayloadLower = (r.qr_payload || '').toLowerCase();
+      const leaderRollUpper = (r.roll_number || '').trim().toUpperCase();
+      const leaderEmailLower = (r.email || '').trim().toLowerCase();
+      const leaderNameLower = (r.full_name || r.participant_name || '').trim().toLowerCase();
+
+      // Check unique QR token and payload match
+      const qrMatched =
+        Boolean(qrTokenLower && (qrTokenLower === term || qrTokenLower === rawTrimmedLower || `attendance:${qrTokenLower}` === rawTrimmedLower)) ||
+        Boolean(qrPayloadLower && (qrPayloadLower === term || qrPayloadLower === rawTrimmedLower));
+
+      // Check leader / solo credentials
+      const leaderMatched =
+        qrMatched ||
+        ticketCodeLower === term ||
+        ticketCodeLower === withoutTkt ||
+        `tkt-${ticketCodeLower}` === term ||
+        regIdLower === term ||
+        regIdLower === withoutTkt ||
+        `tkt-${ticketSuffix}` === term ||
+        ticketSuffix === term ||
+        ticketSuffix === withoutTkt ||
+        ticketSuffix4 === term ||
+        ticketSuffix4 === withoutTkt ||
+        leaderRollUpper === normTermUpper ||
+        leaderEmailLower === term ||
+        (leaderNameLower.length > 3 && leaderNameLower === term);
+
+      if (leaderMatched) {
+        return {
+          registration: r,
+          participant: {
+            name: r.full_name || r.participant_name || 'Participant',
+            roll_number: r.roll_number,
+            email: r.email,
+            department: r.department || 'CSE (AIML)',
+            year: r.year,
+            is_leader: true,
+            team_name: r.team_name,
+            participation_type: r.participation_type || 'SOLO',
+          },
+        };
+      }
+
+      // Check team members if present
+      if (r.team_members && Array.isArray(r.team_members)) {
+        for (const m of r.team_members) {
+          const mRollUpper = (m.roll_number || '').trim().toUpperCase();
+          const mEmailLower = (m.email || '').trim().toLowerCase();
+          const mNameLower = (m.full_name || '').trim().toLowerCase();
+
+          if (
+            mRollUpper === normTermUpper ||
+            mEmailLower === term ||
+            (mNameLower.length > 3 && mNameLower === term)
+          ) {
+            return {
+              registration: r,
+              participant: {
+                name: m.full_name,
+                roll_number: m.roll_number,
+                email: m.email,
+                department: m.department || r.department || 'CSE (AIML)',
+                year: m.year || r.year,
+                is_leader: false,
+                team_name: r.team_name,
+                participation_type: r.participation_type || 'TEAM',
+              },
+            };
+          }
+        }
+
+        // If ticket code or QR token matched and it's a team, return the leader by default
+        if (
+          qrMatched ||
+          ticketCodeLower === term ||
+          ticketCodeLower === withoutTkt ||
+          `tkt-${ticketCodeLower}` === term ||
+          regIdLower === term ||
+          `tkt-${ticketSuffix}` === term ||
+          ticketSuffix === term ||
+          ticketSuffix === withoutTkt
+        ) {
+          return {
+            registration: r,
+            participant: {
+              name: r.full_name,
+              roll_number: r.roll_number,
+              email: r.email,
+              department: r.department || 'CSE (AIML)',
+              year: r.year,
+              is_leader: true,
+              team_name: r.team_name,
+              participation_type: r.participation_type || 'TEAM',
+            },
+          };
+        }
+      }
+
+      return null;
+    };
+
+    // 1. If preferred event provided, search within preferred event first
+    if (preferredEventId) {
+      for (const r of db.registrations) {
+        if (r.event_id === preferredEventId) {
+          const match = checkRegistration(r);
+          if (match) return match;
+        }
+      }
+    }
+
+    // 2. Search all registrations (to catch registrations in other events for wrong_event detection)
+    for (const r of db.registrations) {
+      const match = checkRegistration(r);
+      if (match) return match;
+    }
+
+    return null;
+  }
+
+  // GET Checkins (optionally filtered by event_id)
   adminRouter.get('/checkins', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
     const eventId = req.query.event_id as string;
-    let list = db.checkins;
+    let list = [...db.checkins];
     if (eventId) {
       list = list.filter((c) => c.event_id === eventId);
     }
+    list.sort((a, b) => new Date(b.checked_in_at).getTime() - new Date(a.checked_in_at).getTime());
     res.json(list);
   });
 
-  adminRouter.post('/checkin', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    const { code, event_id, registration_id, roll_number, email, method } = req.body;
-    const queryTerm = (code || roll_number || email || registration_id || '').trim().toLowerCase();
+  // VERIFY TICKET / ROLL NUMBER (Pre-checkin verification)
+  adminRouter.post('/attendance/verify', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+    const { code, event_id } = req.body;
+    const cleanQuery = sanitizeScanQuery(code || '');
 
-    if (!queryTerm) {
-      res.status(400).json({ error: 'Please provide ticket code, roll number, email, or registration ID to check-in.' });
-      return;
-    }
-
-    // Find registration
-    const reg = db.registrations.find(
-      (r) =>
-        (!event_id || r.event_id === event_id) &&
-        (r.id.toLowerCase() === queryTerm ||
-          r.roll_number.toLowerCase() === queryTerm ||
-          r.email.toLowerCase() === queryTerm ||
-          `TKT-${r.id.slice(-6)}`.toLowerCase() === queryTerm)
-    );
-
-    if (!reg) {
-      res.status(404).json({
-        error: 'No matching event registration found. Please check ticket credentials or register on the spot.',
+    if (!cleanQuery) {
+      res.status(400).json({
+        status: 'not_found',
+        error: 'Please enter a ticket code, student roll number, or scan a QR code to verify.',
       });
       return;
     }
 
-    const event = db.events.find((e) => e.id === reg.event_id);
+    const match = findParticipantMatch(cleanQuery, event_id);
+    if (!match) {
+      res.status(404).json({
+        status: 'not_found',
+        error: 'No valid registration was found for this ticket/roll number.',
+        query: cleanQuery,
+      });
+      return;
+    }
 
-    // Check duplicate checkin
+    const { registration: reg, participant } = match;
+    const registeredEvent = db.events.find((e) => e.id === reg.event_id);
+    const selectedEvent = event_id ? db.events.find((e) => e.id === event_id) : null;
+    const ticketCode = `TKT-${reg.id.slice(-6).toUpperCase()}`;
+
+    // Check 1: Wrong Event Check
+    if (event_id && reg.event_id !== event_id) {
+      res.status(400).json({
+        status: 'wrong_event',
+        error: 'Wrong event: Participant is registered for another event.',
+        registered_event_id: reg.event_id,
+        registered_event_title: registeredEvent?.title || reg.event_title || 'Another Event',
+        selected_event_id: event_id,
+        selected_event_title: selectedEvent?.title || 'Selected Event',
+        participant,
+        ticket_code: ticketCode,
+      });
+      return;
+    }
+
+    // Check 2: Registration Status / Eligibility Check
+    const regStatus = (reg.status || 'Confirmed').toLowerCase();
+    if (regStatus === 'cancelled') {
+      res.status(400).json({
+        status: 'not_eligible',
+        error: 'This registration has been cancelled and cannot be checked in.',
+        reason: 'Cancelled',
+        participant,
+        registration: {
+          id: reg.id,
+          event_id: reg.event_id,
+          status: reg.status,
+          team_name: reg.team_name,
+        },
+        ticket_code: ticketCode,
+      });
+      return;
+    }
+
+    if (regStatus === 'waitlisted') {
+      res.status(400).json({
+        status: 'not_eligible',
+        error: 'This registration is waitlisted and cannot be checked in until approved.',
+        reason: 'Waitlisted',
+        participant,
+        registration: {
+          id: reg.id,
+          event_id: reg.event_id,
+          status: reg.status,
+          team_name: reg.team_name,
+        },
+        ticket_code: ticketCode,
+      });
+      return;
+    }
+
+    // Check 3: Duplicate Check-In Protection
+    const existingCheckin = db.checkins.find(
+      (c) =>
+        c.event_id === reg.event_id &&
+        ((c.roll_number && c.roll_number.toUpperCase() === participant.roll_number.toUpperCase()) ||
+          (!reg.team_members?.length && c.registration_id === reg.id))
+    );
+
+    if (existingCheckin) {
+      res.status(409).json({
+        status: 'already_checked_in',
+        error: `Participant ${participant.name} (${participant.roll_number}) is already checked in.`,
+        record: existingCheckin,
+        participant,
+        ticket_code: ticketCode,
+        event: {
+          id: registeredEvent?.id || reg.event_id,
+          title: registeredEvent?.title || reg.event_title || 'IntelliGenZ Event',
+          date: registeredEvent?.date || '',
+          venue: registeredEvent?.venue || '',
+        },
+      });
+      return;
+    }
+
+    // All Clear: Eligible for check-in
+    res.json({
+      status: 'eligible',
+      message: 'Registration verified and ready for check-in.',
+      participant,
+      registration: {
+        id: reg.id,
+        event_id: reg.event_id,
+        status: reg.status,
+        team_name: reg.team_name,
+        participation_type: reg.participation_type || 'SOLO',
+      },
+      event: {
+        id: registeredEvent?.id || reg.event_id,
+        title: registeredEvent?.title || reg.event_title || 'IntelliGenZ Event',
+        date: registeredEvent?.date || '',
+        start_time: registeredEvent?.start_time || '',
+        venue: registeredEvent?.venue || '',
+      },
+      ticket_code: ticketCode,
+    });
+  });
+
+  // EXECUTE CHECK-IN (Atomic & duplicate protected)
+  adminRouter.post('/checkin', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+    const { code, event_id, registration_id, roll_number, method } = req.body;
+    const queryTerm = sanitizeScanQuery(code || roll_number || registration_id || '');
+
+    if (!queryTerm) {
+      res.status(400).json({ error: 'Please provide ticket code or student roll number to check-in.' });
+      return;
+    }
+
+    const match = findParticipantMatch(queryTerm, event_id);
+    if (!match) {
+      res.status(404).json({
+        status: 'not_found',
+        error: 'No valid event registration found. Please verify ticket or roll number.',
+      });
+      return;
+    }
+
+    const { registration: reg, participant } = match;
+    const registeredEvent = db.events.find((e) => e.id === reg.event_id);
+    const selectedEvent = event_id ? db.events.find((e) => e.id === event_id) : null;
+    const ticketCode = `TKT-${reg.id.slice(-6).toUpperCase()}`;
+
+    // Enforce Event Match
+    if (event_id && reg.event_id !== event_id) {
+      res.status(400).json({
+        status: 'wrong_event',
+        error: `This participant is registered for '${registeredEvent?.title || 'Another Event'}', not '${selectedEvent?.title || 'the selected event'}'.`,
+        registered_event_id: reg.event_id,
+        registered_event_title: registeredEvent?.title,
+        selected_event_id: event_id,
+        selected_event_title: selectedEvent?.title,
+        participant,
+      });
+      return;
+    }
+
+    // Enforce Registration Eligibility
+    const regStatus = (reg.status || 'Confirmed').toLowerCase();
+    if (regStatus === 'cancelled' || regStatus === 'waitlisted') {
+      res.status(400).json({
+        status: 'not_eligible',
+        error: `Registration is ${reg.status} and cannot be checked in.`,
+        participant,
+      });
+      return;
+    }
+
+    // Backend Unique Constraint Check: event_id + roll_number / registration_id
     const alreadyCheckedIn = db.checkins.find(
-      (c) => c.registration_id === reg.id || (c.event_id === reg.event_id && c.roll_number.toUpperCase() === reg.roll_number.toUpperCase())
+      (c) =>
+        c.event_id === reg.event_id &&
+        ((c.roll_number && c.roll_number.toUpperCase() === participant.roll_number.toUpperCase()) ||
+          (!reg.team_members?.length && c.registration_id === reg.id))
     );
 
     if (alreadyCheckedIn) {
       res.status(409).json({
-        error: `Participant ${reg.full_name} (${reg.roll_number}) was already checked in at ${new Date(alreadyCheckedIn.checked_in_at).toLocaleTimeString()}.`,
+        status: 'already_checked_in',
+        error: `Participant ${participant.name} (${participant.roll_number}) was already checked in at ${new Date(alreadyCheckedIn.checked_in_at).toLocaleTimeString()}.`,
         record: alreadyCheckedIn,
+        participant,
       });
       return;
     }
 
+    // Create persistent Attendance Record
     const checkinRecord: AttendanceRecord = {
       id: `chk-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       registration_id: reg.id,
       event_id: reg.event_id,
-      event_title: event?.title || reg.event_title || 'IntelliGenZ Event',
-      participant_name: reg.full_name,
-      roll_number: reg.roll_number,
-      email: reg.email,
-      department: reg.department,
+      event_title: registeredEvent?.title || reg.event_title || 'IntelliGenZ Event',
+      participant_name: participant.name,
+      roll_number: participant.roll_number,
+      email: participant.email,
+      department: participant.department || reg.department || 'CSE (AIML)',
       checked_in_at: new Date().toISOString(),
-      checkin_method: method || 'Code Entry',
+      checkin_method: method || 'Rapid Scanner',
     };
+
+    // Update registration status to Attended if it was Confirmed
+    if (reg.status === 'Confirmed') {
+      reg.status = 'Attended';
+    }
 
     db.checkins.unshift(checkinRecord);
     saveDatabase(db);
 
     res.status(201).json({
       success: true,
-      message: `Verified & Checked-in: ${reg.full_name} (${reg.roll_number})`,
+      message: `Checked in: ${participant.name} (${participant.roll_number})`,
       record: checkinRecord,
+      participant,
+      ticket_code: ticketCode,
     });
   });
 
+  // GET FULL ATTENDANCE ROSTER (Synchronized with registrations and checkins)
+  adminRouter.get('/attendance/roster', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+    const eventId = req.query.event_id as string;
+    const selectedEvent = eventId ? db.events.find((e) => e.id === eventId) : null;
+
+    const eventRegistrations = db.registrations.filter((r) => (!eventId || r.event_id === eventId) && r.status !== 'Cancelled');
+    const eventCheckins = db.checkins.filter((c) => !eventId || c.event_id === eventId);
+
+    // Build unique participant entries
+    const rosterItems: any[] = [];
+    const checkinMap = new Map<string, AttendanceRecord>();
+
+    for (const c of eventCheckins) {
+      checkinMap.set(`${c.event_id}__${c.roll_number.toUpperCase()}`, c);
+      checkinMap.set(`${c.event_id}__${c.registration_id}`, c);
+    }
+
+    for (const reg of eventRegistrations) {
+      const ticketCode = `TKT-${reg.id.slice(-6).toUpperCase()}`;
+
+      // Leader / Individual participant
+      const leaderKey = `${reg.event_id}__${(reg.roll_number || '').toUpperCase()}`;
+      const leaderCheckin = checkinMap.get(leaderKey) || checkinMap.get(`${reg.event_id}__${reg.id}`);
+
+      rosterItems.push({
+        registration_id: reg.id,
+        ticket_code: ticketCode,
+        participant_name: reg.full_name || reg.participant_name || 'Participant',
+        roll_number: reg.roll_number,
+        email: reg.email,
+        department: reg.department || 'CSE (AIML)',
+        year: reg.year || '3rd Year',
+        registration_status: reg.status,
+        team_name: reg.team_name,
+        is_leader: true,
+        checked_in: !!leaderCheckin,
+        checked_in_at: leaderCheckin?.checked_in_at,
+        checkin_method: leaderCheckin?.checkin_method,
+        checkin_id: leaderCheckin?.id,
+      });
+
+      // Team members
+      if (reg.team_members && Array.isArray(reg.team_members)) {
+        for (const m of reg.team_members) {
+          const mKey = `${reg.event_id}__${(m.roll_number || '').toUpperCase()}`;
+          const mCheckin = checkinMap.get(mKey);
+
+          rosterItems.push({
+            registration_id: reg.id,
+            ticket_code: ticketCode,
+            participant_name: m.full_name,
+            roll_number: m.roll_number,
+            email: m.email,
+            department: m.department || reg.department || 'CSE (AIML)',
+            year: m.year || reg.year || '3rd Year',
+            registration_status: reg.status,
+            team_name: reg.team_name,
+            is_leader: false,
+            checked_in: !!mCheckin,
+            checked_in_at: mCheckin?.checked_in_at,
+            checkin_method: mCheckin?.checkin_method,
+            checkin_id: mCheckin?.id,
+          });
+        }
+      }
+    }
+
+    const totalRegistered = rosterItems.length;
+    const checkedInCount = rosterItems.filter((i) => i.checked_in).length;
+    const remainingCount = Math.max(0, totalRegistered - checkedInCount);
+    const attendanceRate = totalRegistered > 0 ? Math.round((checkedInCount / totalRegistered) * 100) : 0;
+
+    res.json({
+      event: selectedEvent
+        ? {
+            id: selectedEvent.id,
+            title: selectedEvent.title,
+            date: selectedEvent.date,
+            start_time: selectedEvent.start_time,
+            venue: selectedEvent.venue,
+          }
+        : undefined,
+      stats: {
+        registered: totalRegistered,
+        checked_in: checkedInCount,
+        remaining: remainingCount,
+        attendance_rate: attendanceRate,
+      },
+      roster: rosterItems,
+    });
+  });
+
+  // REMOVE CHECK-IN
   adminRouter.delete('/checkins/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+    const target = db.checkins.find((c) => c.id === req.params.id);
     db.checkins = db.checkins.filter((c) => c.id !== req.params.id);
+    
+    // If the registration had status Attended, revert to Confirmed if no other checkin remains for this reg
+    if (target) {
+      const otherCheckin = db.checkins.find((c) => c.registration_id === target.registration_id);
+      if (!otherCheckin) {
+        const reg = db.registrations.find((r) => r.id === target.registration_id);
+        if (reg && reg.status === 'Attended') {
+          reg.status = 'Confirmed';
+        }
+      }
+    }
+
     saveDatabase(db);
     res.json({ success: true, message: 'Check-in record removed' });
   });
@@ -3198,8 +3895,16 @@ CREATE POLICY "Allow public contact message submit" ON public.contact_messages F
 
   // Vite middleware for development vs static build in production
   if (process.env.NODE_ENV !== 'production') {
+    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: isHmrDisabled
+          ? false
+          : {
+              server: httpServer,
+            },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -3211,7 +3916,7 @@ CREATE POLICY "Allow public contact message submit" ON public.contact_messages F
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`⚡ INTELLIGENZ Club Server running on port ${PORT} [http://0.0.0.0:${PORT}]`);
     console.log(`🏛️ Institution: DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY`);
     console.log(`🤖 Department: Department of CSE (AIML) & AI`);

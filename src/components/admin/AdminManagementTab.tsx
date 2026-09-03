@@ -69,15 +69,41 @@ export const AdminManagementTab: React.FC = () => {
   const currentUser = authStorage.getUser();
 
   useEffect(() => {
-    loadAdmins();
+    let isMounted = true;
+
+    const fetchAdmins = async () => {
+      if (!isMounted || !authStorage.isAuthenticated()) return;
+      setLoading(true);
+      try {
+        const data = await api.adminGetAdmins();
+        if (isMounted) {
+          setAdmins(data || []);
+        }
+      } catch (err: any) {
+        if (!isMounted || err?.name === 'AbortError') return;
+        setFeedback({ message: err.message || 'Failed to fetch administrator accounts', type: 'error' });
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAdmins();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadAdmins = async () => {
+    if (!authStorage.isAuthenticated()) return;
     setLoading(true);
     try {
       const data = await api.adminGetAdmins();
-      setAdmins(data);
+      setAdmins(data || []);
     } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       setFeedback({ message: err.message || 'Failed to fetch administrator accounts', type: 'error' });
     } finally {
       setLoading(false);

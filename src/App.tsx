@@ -24,6 +24,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 // API & Types
 import { api } from './lib/api';
+import { adminSessionCoordinator } from './lib/adminSession';
 import {
   Event,
   Announcement,
@@ -158,15 +159,16 @@ export default function App() {
 
   const handleAdminLogin = (token: string) => {
     setAdminToken(token);
-    localStorage.setItem('intelligenz_admin_token', token);
+    adminSessionCoordinator.initializeSession(token);
     navigate('/admin');
   };
 
   const handleAdminLogout = () => {
+    api.cancelPendingAdminRequests();
     setAdminToken(null);
-    localStorage.removeItem('intelligenz_admin_token');
+    adminSessionCoordinator.terminateSession('manual', '/admin');
     api.adminLogout();
-    navigate('/');
+    navigate('/admin');
   };
 
   // Render correct view based on path
@@ -267,6 +269,7 @@ export default function App() {
       case '/contact':
         return <ContactPage onNavigate={navigate} />;
       case '/admin':
+      case '/admin/login':
         return adminToken ? (
           <AdminDashboardPage
             onLogout={handleAdminLogout}

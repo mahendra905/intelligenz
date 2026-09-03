@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { CommunityImpactStat, SiteStats } from '../../types';
 import { INITIAL_COMMUNITY_IMPACT_STATS } from '../../data/initialData';
-import { api } from '../../lib/api';
+import { api, authStorage } from '../../lib/api';
 
 const AVAILABLE_ICONS = [
   { name: 'Users', label: 'Users / Students', icon: Users },
@@ -142,7 +142,41 @@ export const AdminStatsTab: React.FC<AdminStatsTabProps> = ({ stats, onSaveStats
   };
 
   useEffect(() => {
-    loadStats();
+    let isMounted = true;
+    const fetchStats = async () => {
+      if (!isMounted || !authStorage.isAuthenticated()) return;
+      setLoading(true);
+      try {
+        const data = await api.adminGetCommunityImpactStats();
+        if (isMounted) {
+          if (Array.isArray(data) && data.length > 0) {
+            setItems(data);
+          } else if (stats?.community_impact_stats && Array.isArray(stats.community_impact_stats)) {
+            setItems(stats.community_impact_stats);
+          } else {
+            setItems(INITIAL_COMMUNITY_IMPACT_STATS);
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          if (stats?.community_impact_stats && Array.isArray(stats.community_impact_stats)) {
+            setItems(stats.community_impact_stats);
+          } else {
+            setItems(INITIAL_COMMUNITY_IMPACT_STATS);
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleUpdateField = (id: string, field: keyof CommunityImpactStat, value: any) => {

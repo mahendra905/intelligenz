@@ -15,6 +15,8 @@ import {
   NewsletterSubscriber,
   NewsletterBroadcast,
   AttendanceRecord,
+  AttendanceVerificationResult,
+  AttendanceRosterResponse,
   LearningResource,
   AuditLog,
   ParticipationType,
@@ -23,23 +25,100 @@ import {
 } from '../types';
 
 
-const ADMIN_TOKEN_KEY = 'intelligenz_admin_token';
-const ADMIN_USER_KEY = 'intelligenz_admin_user';
+import { authStorage } from './authStorage';
+import { adminSessionCoordinator } from './adminSession';
 
-export const authStorage = {
-  getToken: () => localStorage.getItem(ADMIN_TOKEN_KEY),
-  setToken: (token: string) => localStorage.setItem(ADMIN_TOKEN_KEY, token),
-  clearToken: () => {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
-  },
-  getUser: () => {
-    const raw = localStorage.getItem(ADMIN_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  },
-  setUser: (user: any) => localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user)),
-  isAuthenticated: () => !!localStorage.getItem(ADMIN_TOKEN_KEY),
+export { authStorage };
+
+// Secure HTTP 401/403 interceptor wrapper around standard fetch without mutating window.fetch
+const baseFetch = typeof globalThis !== 'undefined' && globalThis.fetch
+  ? globalThis.fetch.bind(globalThis)
+  : (args: any) => window.fetch(args);
+
+let adminAbortController: AbortController = new AbortController();
+
+export const abortAllAdminRequests = () => {
+  try {
+    adminAbortController.abort();
+  } catch {
+    // ignore
+  }
+  adminAbortController = new AbortController();
 };
+
+const secureFetch = async (...args: Parameters<typeof globalThis.fetch>): Promise<Response> => {
+  const [resource, init] = args;
+  const url = typeof resource === 'string' ? resource : resource instanceof Request ? resource.url : String(resource);
+  const isLogin = url.includes('/api/auth/login');
+  const isLogout = url.includes('/api/auth/logout');
+  const isProtectedAdminApi = url.includes('/api/admin');
+
+  // Short-circuit protected admin endpoints if user is not authenticated or already logged out
+  if (isProtectedAdminApi && !authStorage.isAuthenticated()) {
+    return new Response(JSON.stringify({ error: 'User is not authenticated' }), {
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // On authenticated admin request, record activity to keep idle timer reset
+  if (authStorage.isAuthenticated() && !isLogin && !isLogout) {
+    adminSessionCoordinator.recordActivity(false);
+  }
+
+  // Combine signal with active admin abort controller for protected requests
+  let signal = init?.signal;
+  if (isProtectedAdminApi) {
+    if (signal && typeof AbortSignal.any === 'function') {
+      signal = AbortSignal.any([signal, adminAbortController.signal]);
+    } else {
+      signal = signal || adminAbortController.signal;
+    }
+  }
+
+  try {
+    const response = await baseFetch(resource, { ...init, signal });
+
+    // If server rejects with 401/403 due to session expiry or revocation
+    // ONLY trigger termination if the client was actively authenticated (not during or after logout)
+    if (
+      (response.status === 401 || (response.status === 403 && isProtectedAdminApi)) &&
+      !isLogin &&
+      !isLogout &&
+      authStorage.isAuthenticated()
+    ) {
+      let reason: 'inactivity' | 'max_lifetime' | 'unauthorized' = 'unauthorized';
+      try {
+        const cloned = response.clone();
+        const data = await cloned.json();
+        if (data.code === 'SESSION_IDLE_TIMEOUT') {
+          reason = 'inactivity';
+        } else if (data.code === 'SESSION_MAX_LIFETIME') {
+          reason = 'max_lifetime';
+        }
+      } catch {
+        // ignore json parse errors
+      }
+
+      adminSessionCoordinator.terminateSession(reason);
+    }
+
+    return response;
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      return new Response(JSON.stringify({ error: 'Request aborted' }), {
+        status: 499,
+        statusText: 'Client Closed Request',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    throw err;
+  }
+};
+
+// Shadow fetch for all API methods in this module
+const fetch = secureFetch;
 
 function authHeaders(): Record<string, string> {
   const token = authStorage.getToken();
@@ -96,7 +175,14 @@ export const api = {
     roll_number: string;
     team_name?: string;
     team_members?: TeamMemberRegistration[];
-  }): Promise<{ success: boolean; message: string; registration: EventRegistration }> => {
+  }): Promise<{
+    success: boolean;
+    message: string;
+    registration: EventRegistration;
+    ticket_code?: string;
+    qr_token?: string;
+    qr_payload?: string;
+  }> => {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -210,6 +296,7 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Invalid administrator credentials.');
     authStorage.setToken(data.token);
     authStorage.setUser(data.user);
+    adminSessionCoordinator.resetSessionOnLogin();
     return data;
   },
 
@@ -222,7 +309,11 @@ export const api = {
     } catch {
       // Ignore network errors on signout
     }
-    authStorage.clearToken();
+    adminSessionCoordinator.terminateSession('manual');
+  },
+
+  staySignedIn: async (): Promise<boolean> => {
+    return adminSessionCoordinator.staySignedIn();
   },
 
   verifyAuth: async () => {
@@ -854,8 +945,18 @@ export const api = {
     return api.login(credentials);
   },
 
-  adminLogout: () => {
+  cancelPendingAdminRequests: () => {
+    abortAllAdminRequests();
+  },
+
+  adminLogout: async () => {
+    abortAllAdminRequests();
     authStorage.clearToken();
+    try {
+      await baseFetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore network errors on logout
+    }
   },
 
   getAdminProfile: async () => {
@@ -1126,6 +1227,28 @@ export const api = {
     return res.json();
   },
 
+  adminVerifyAttendance: async (data: {
+    code: string;
+    event_id?: string;
+  }): Promise<AttendanceVerificationResult> => {
+    const res = await fetch('/api/admin/attendance/verify', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    return result;
+  },
+
+  adminGetAttendanceRoster: async (eventId?: string): Promise<AttendanceRosterResponse> => {
+    const url = eventId
+      ? `/api/admin/attendance/roster?event_id=${encodeURIComponent(eventId)}`
+      : '/api/admin/attendance/roster';
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) throw new Error('Failed to load attendance roster');
+    return res.json();
+  },
+
   adminCheckinParticipant: async (data: {
     code?: string;
     event_id?: string;
@@ -1133,14 +1256,19 @@ export const api = {
     roll_number?: string;
     email?: string;
     method?: string;
-  }): Promise<{ success: boolean; message: string; record: AttendanceRecord }> => {
+  }): Promise<{ success: boolean; message: string; record: AttendanceRecord; participant?: any; status?: string; error?: string; ticket_code?: string }> => {
     const res = await fetch('/api/admin/checkin', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Check-in failed');
+    if (!res.ok) {
+      const error: any = new Error(result.error || 'Check-in failed');
+      error.status = result.status;
+      error.details = result;
+      throw error;
+    }
     return result;
   },
 

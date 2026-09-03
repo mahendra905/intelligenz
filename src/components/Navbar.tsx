@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       }`}
     >
       {/* Top bar with brand, navigation & institutional affiliation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-[1800px] mr-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           
           {/* Logo & Brand Identity */}
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Desktop Navigation Links */}
-          <nav id="desktop-nav" className="hidden lg:flex items-center gap-6 text-[12px] font-medium uppercase tracking-widest text-[#9CA3AF]">
+          <nav id="desktop-nav" className="hidden lg:flex items-center gap-3.5 xl:gap-4.5 2xl:gap-6 text-[12px] font-medium uppercase tracking-widest text-[#9CA3AF]">
             {navItems.map((item) => {
               const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path));
               return (

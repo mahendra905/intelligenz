@@ -111,7 +111,10 @@
         "Cloud compute credits sponsored for all qualified teams"
       ],
       "created_at": "2026-08-15T10:00:00Z",
-      "updated_at": "2026-08-25T14:30:00Z"
+      "updated_at": "2026-08-25T14:30:00Z",
+      "participation_type": "TEAM",
+      "min_team_size": 2,
+      "max_team_size": 4
     },
     {
       "id": "evt-genai-masterclass",
@@ -137,7 +140,10 @@
         "Official Certificate of Completion from Department of CSE (AIML)"
       ],
       "created_at": "2026-08-20T08:00:00Z",
-      "updated_at": "2026-08-28T09:15:00Z"
+      "updated_at": "2026-08-28T09:15:00Z",
+      "participation_type": "SOLO",
+      "min_team_size": 1,
+      "max_team_size": 1
     },
     {
       "id": "evt-vision-robotics",
@@ -163,7 +169,10 @@
         "Open Q&A on robotics competitions"
       ],
       "created_at": "2026-08-22T11:00:00Z",
-      "updated_at": "2026-08-22T11:00:00Z"
+      "updated_at": "2026-08-22T11:00:00Z",
+      "participation_type": "SOLO",
+      "min_team_size": 1,
+      "max_team_size": 1
     },
     {
       "id": "evt-code-clash-2026",
@@ -201,7 +210,10 @@
       ],
       "certificates_available": true,
       "created_at": "2026-07-28T09:00:00Z",
-      "updated_at": "2026-08-11T16:00:00Z"
+      "updated_at": "2026-08-11T16:00:00Z",
+      "participation_type": "SOLO",
+      "min_team_size": 1,
+      "max_team_size": 1
     }
   ],
   "announcements": [
@@ -568,7 +580,63 @@
     }
   ],
   "join_applications": [],
-  "registrations": [],
+  "registrations": [
+    {
+      "id": "reg-neuro-104201",
+      "event_id": "evt-neurohack-2026",
+      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "full_name": "Aarav Sharma",
+      "email": "aarav.sharma@example.com",
+      "phone": "9876543210",
+      "department": "CSE (AIML)",
+      "year": "3rd Year",
+      "roll_number": "22K61A4201",
+      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
+      "participation_type": "TEAM",
+      "team_name": "Neural Pioneers",
+      "team_members": [
+        {
+          "full_name": "Priya Patel",
+          "email": "priya.patel@example.com",
+          "roll_number": "22K61A4202",
+          "department": "CSE (AIML)",
+          "year": "3rd Year"
+        }
+      ],
+      "status": "Confirmed",
+      "created_at": "2026-09-03T13:05:51.561Z"
+    },
+    {
+      "id": "reg-genai-104215",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "full_name": "Rohan Verma",
+      "email": "rohan.verma@example.com",
+      "phone": "9876543211",
+      "department": "CSE (AIML)",
+      "year": "3rd Year",
+      "roll_number": "22K61A4215",
+      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
+      "participation_type": "SOLO",
+      "status": "Confirmed",
+      "created_at": "2026-09-03T13:05:51.561Z"
+    },
+    {
+      "id": "reg-neuro-104230",
+      "event_id": "evt-neurohack-2026",
+      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "full_name": "Ananya Reddy",
+      "email": "ananya.reddy@example.com",
+      "phone": "9876543212",
+      "department": "CSE (AI)",
+      "year": "2nd Year",
+      "roll_number": "22K61A4230",
+      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
+      "participation_type": "SOLO",
+      "status": "Confirmed",
+      "created_at": "2026-09-03T13:05:51.561Z"
+    }
+  ],
   "messages": [],
   "admin_users": [
     {
@@ -582,8 +650,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-01T07:02:05.813Z",
-      "last_login_at": "2026-09-01T07:02:05.813Z",
+      "updated_at": "2026-09-03T12:47:47.665Z",
+      "last_login_at": "2026-09-03T12:47:47.665Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -831,6 +899,46 @@
   ],
   "checkins": [],
   "audit_logs": [
+    {
+      "id": "log-1788440673290-b184i",
+      "action": "Session Expired",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Session expired due to 15 minutes of inactivity",
+      "timestamp": "2026-09-03T13:04:33.290Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788439667666-ixbnf",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T12:47:47.666Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788438486725-x8t0y",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T12:28:06.725Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788436153075-5hrb8",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T11:49:13.075Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1788246125834-sp27k",
       "action": "Image Upload",

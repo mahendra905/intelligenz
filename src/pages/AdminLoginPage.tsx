@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Shield, Lock, Mail, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Shield, Lock, Mail, AlertCircle, Eye, EyeOff, ArrowLeft, Clock } from 'lucide-react';
 import { IntelligenzLogo } from '../components/IntelligenzLogo';
+import { AUTH_CONFIG } from '../config/authConfig';
 
 interface AdminLoginPageProps {
   onLoginSuccess: (token: string) => void;
@@ -17,6 +18,19 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expiredNotice, setExpiredNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const notice = sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.EXPIRED_REASON);
+      if (notice) {
+        setExpiredNotice(notice);
+        sessionStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.EXPIRED_REASON);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +84,13 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             CSE (AIML) &amp; AI • DR. KVSRIT
           </p>
         </div>
+
+        {expiredNotice && (
+          <div className="mb-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 animate-in fade-in">
+            <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>{expiredNotice}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2 animate-in fade-in">
