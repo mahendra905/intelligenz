@@ -1134,10 +1134,20 @@ export const api = {
     return res.json();
   },
 
-  verifyCertificate: async (code: string): Promise<{ valid: boolean; certificate?: Certificate; verification_time: string; verified_by: string; error?: string }> => {
-    const res = await fetch(`/api/certificates/verify/${encodeURIComponent(code)}`);
+  verifyCertificate: async (code: string): Promise<{
+    valid: boolean;
+    status?: string;
+    certificate?: Certificate;
+    certificates?: Certificate[];
+    count?: number;
+    match_type?: string;
+    verification_time?: string;
+    verified_by?: string;
+    error?: string;
+    message?: string;
+  }> => {
+    const res = await fetch(`/api/certificates/verify/${encodeURIComponent(code.trim())}`);
     const result = await res.json();
-    if (!res.ok && !result.error) throw new Error('Failed to verify certificate');
     return result;
   },
 

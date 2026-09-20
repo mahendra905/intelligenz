@@ -20,6 +20,7 @@ import {
 import { api } from '../lib/api';
 import { IntelligenzLogo } from '../components/IntelligenzLogo';
 import { Certificate, SiteSettings } from '../types';
+import { printCertificateElement } from '../lib/printCertificate';
 
 interface CertificatesPageProps {
   onNavigate: (path: string) => void;
@@ -29,6 +30,7 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [verifiedCert, setVerifiedCert] = useState<Certificate | null>(null);
+  const [multipleCerts, setMultipleCerts] = useState<Certificate[]>([]);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [recentCertificates, setRecentCertificates] = useState<Certificate[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -58,22 +60,28 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
   };
 
   const handleVerify = async (codeToVerify?: string) => {
-    const code = (codeToVerify || searchQuery).trim().toUpperCase();
+    const code = (codeToVerify || searchQuery).trim();
     if (!code) return;
 
     setSearching(true);
     setVerificationError(null);
     setVerifiedCert(null);
+    setMultipleCerts([]);
 
     try {
       const result = await api.verifyCertificate(code);
-      if (result.valid && result.certificate) {
-        setVerifiedCert(result.certificate);
+      if (result.status === 'MultipleFound' && result.certificates && result.certificates.length > 1) {
+        setMultipleCerts(result.certificates);
+        setVerifiedCert(null);
+      } else if (result.valid && (result.certificate || (result.certificates && result.certificates.length === 1))) {
+        const cert = result.certificate || result.certificates![0];
+        setVerifiedCert(cert);
+        setMultipleCerts([]);
       } else {
-        setVerificationError(result.error || 'Certificate not found or has been revoked.');
+        setVerificationError(result.error || 'Certificate not found. Please verify the Certificate ID or Student Roll Number and try again.');
       }
     } catch (err: any) {
-      setVerificationError(err.message || 'Verification lookup failed. Please check the code.');
+      setVerificationError(err.message || 'Verification lookup failed. Please check the Certificate ID or Roll Number.');
     } finally {
       setSearching(false);
     }
@@ -87,143 +95,19 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (verifiedCert) {
+      printCertificateElement('intelligenz-certificate-card', verifiedCert.certificate_code);
+    } else {
+      window.print();
+    }
   };
 
   return (
-    <div className="certificate-page-container min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 print:p-0 print:m-0 print:bg-white print:min-h-0 print:w-full">
-      {/* Printable Certificate View (hidden on screen, active ONLY during print/PDF) */}
-      {verifiedCert && (
-        <div className="hidden print:flex certificate-printable-container box-border items-center justify-center bg-white text-slate-900">
-          <div className="relative border-[4px] border-slate-900 p-7 w-full h-full flex flex-col justify-between items-center text-center box-border rounded-lg bg-gradient-to-b from-amber-50/40 via-white to-amber-50/20">
-            {/* Inner Gold Precision Border */}
-            <div className="absolute inset-2 border-[1.5px] border-amber-700/60 pointer-events-none rounded"></div>
-            <div className="absolute inset-3.5 border-[0.5px] border-slate-400/40 pointer-events-none"></div>
-
-            {/* Corner Decorative Brackets */}
-            <div className="absolute top-4 left-4 text-amber-700 font-serif text-base font-bold">╔</div>
-            <div className="absolute top-4 right-4 text-amber-700 font-serif text-base font-bold">╗</div>
-            <div className="absolute bottom-4 left-4 text-amber-700 font-serif text-base font-bold">╚</div>
-            <div className="absolute bottom-4 right-4 text-amber-700 font-serif text-base font-bold">╝</div>
-
-            {/* Header: Institution & Department Branding */}
-            <div className="flex flex-col items-center pt-1 z-10">
-              <div className="flex items-center justify-center gap-3 mb-1">
-                <div className="w-9 h-9 rounded-full bg-cyan-950 text-cyan-300 flex items-center justify-center font-bold text-xs border border-cyan-700/50 shadow-sm">
-                  <IntelligenzLogo size="sm" />
-                </div>
-                <div>
-                  <h3 className="text-[12px] font-black tracking-[0.2em] text-slate-900 uppercase font-sans">
-                    DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY
-                  </h3>
-                  <p className="text-[8.5px] tracking-wider text-slate-600 font-medium uppercase">
-                    Approved by AICTE, New Delhi • Affiliated to JNTUA, Ananthapuramu
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-[9.5px] font-bold text-slate-800 tracking-wider uppercase mt-0.5 pb-1 border-b border-slate-300 w-full max-w-xl">
-                DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING (AIML) & ARTIFICIAL INTELLIGENCE
-              </div>
-
-              <div className="flex items-center gap-2 mt-1">
-                <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-amber-700"></span>
-                <span className="text-xl font-black tracking-[0.25em] text-cyan-950 font-mono">
-                  INTELLIGENZ CLUB
-                </span>
-                <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-amber-700"></span>
-              </div>
-
-              <div className="mt-1.5 inline-flex items-center gap-2 px-5 py-0.5 rounded-full bg-amber-100/90 border border-amber-600/60 shadow-xs">
-                <span className="text-[8px] text-amber-900">✦</span>
-                <span className="text-[10px] text-amber-950 font-extrabold font-mono tracking-[0.18em] uppercase">
-                  CERTIFICATE OF {verifiedCert.certificate_type.toUpperCase()}
-                </span>
-                <span className="text-[8px] text-amber-900">✦</span>
-              </div>
-            </div>
-
-            {/* Body: Recipient Details & Citation */}
-            <div className="my-auto py-1 max-w-2xl w-full z-10">
-              <p className="text-[11px] text-slate-600 italic font-serif">This credential is proudly presented to</p>
-              
-              <div className="my-1">
-                <h1 className="text-3xl font-extrabold text-slate-950 font-serif tracking-wide">
-                  {verifiedCert.student_name}
-                </h1>
-                <div className="h-0.5 w-48 bg-gradient-to-r from-transparent via-amber-600 to-transparent mx-auto mt-0.5"></div>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-slate-700 mt-1">
-                <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-semibold">
-                  Roll No: {verifiedCert.student_roll_no}
-                </span>
-                <span>•</span>
-                <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-semibold">
-                  Dept: {verifiedCert.department}
-                </span>
-              </div>
-
-              <p className="text-[9.5px] text-slate-500 mt-0.5 font-medium">{verifiedCert.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY'}</p>
-
-              <p className="text-[11.5px] text-slate-800 mt-2.5 leading-relaxed max-w-xl mx-auto font-sans">
-                for active participation, technical innovation, and exceptional performance demonstrated in{' '}
-                <span className="font-extrabold text-slate-950 font-serif">"{verifiedCert.event_title}"</span> organized by the IntelliGenZ Club.
-              </p>
-
-              {verifiedCert.notes && (
-                <p className="text-[9.5px] text-slate-600 italic mt-1 font-serif">
-                  "{verifiedCert.notes}"
-                </p>
-              )}
-            </div>
-
-            {/* Footer: Credential ID, Holographic Seal & Signing Authority */}
-            <div className="w-full grid grid-cols-3 items-end pb-1 pt-2 border-t border-slate-300/80 z-10">
-              {/* Left: Verification Metadata */}
-              <div className="text-left space-y-0.5">
-                <p className="text-[8px] uppercase tracking-wider text-slate-500 font-mono font-semibold">Certificate ID</p>
-                <p className="text-[11px] font-mono font-black text-slate-900 tracking-wide">{verifiedCert.certificate_code}</p>
-                <div className="flex items-center gap-1.5 text-[8.5px] text-slate-600 font-mono">
-                  <span>Issued: {verifiedCert.issue_date}</span>
-                  <span>•</span>
-                  <span className="text-emerald-700 font-bold">Valid & Verified</span>
-                </div>
-              </div>
-
-              {/* Center: Official Seal */}
-              <div className="flex flex-col items-center">
-                <div className="w-13 h-13 rounded-full border-2 border-amber-700/60 p-0.5 bg-gradient-to-b from-amber-100 to-amber-50 shadow-xs flex items-center justify-center">
-                  <div className="w-full h-full rounded-full border border-dashed border-amber-800/60 flex flex-col items-center justify-center text-amber-900">
-                    <ShieldCheck className="w-5 h-5 text-amber-800" />
-                    <span className="text-[6.5px] font-black tracking-tighter uppercase font-mono mt-0.5">OFFICIAL SEAL</span>
-                  </div>
-                </div>
-                <span className="text-[7.5px] uppercase tracking-widest text-slate-600 font-mono font-bold mt-0.5">
-                  CSE (AIML) & AI • DRKVSRIT
-                </span>
-              </div>
-
-              {/* Right: Signature & Authority */}
-              <div className="text-right space-y-0.5">
-                <div className="w-36 ml-auto border-b border-slate-700 mb-1"></div>
-                <p className="text-[11px] font-bold text-slate-950 font-sans">
-                  {siteSettings?.certificate_signing_authority || siteSettings?.certificate_lead_name || verifiedCert.issued_by}
-                </p>
-                <p className="text-[8.5px] text-slate-600 font-medium">
-                  {siteSettings?.certificate_lead_designation || verifiedCert.designation || 'Faculty Coordinator & Head'}
-                </p>
-                <p className="text-[7.5px] text-slate-400 font-mono">Faculty Coordinator & Head</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Screen View (Hidden during print) */}
-      <div className="max-w-6xl mx-auto space-y-12 print:hidden">
+    <div className="certificate-page-container min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8 print:p-0 print:m-0 print:bg-slate-950 print:min-h-0 print:w-full">
+      {/* Screen View */}
+      <div className="max-w-6xl mx-auto space-y-12">
         {/* Hero Section */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 no-print print:hidden">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             <ShieldCheck className="w-3.5 h-3.5" />
             Official Credential Verification Engine
@@ -237,7 +121,7 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
         </div>
 
         {/* Verification Search Box */}
-        <div className="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl shadow-cyan-950/20 backdrop-blur-sm">
+        <div className="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl shadow-cyan-950/20 backdrop-blur-sm no-print print:hidden">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -246,22 +130,43 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
             className="space-y-4"
           >
             <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider">
-              Enter Certificate ID or Student Roll Number
+              ENTER CERTIFICATE ID OR STUDENT ROLL NUMBER
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="e.g. IZ-2026-NH-8942 or 22K61A4201"
+                placeholder="e.g. IZ-2026-NH-8942 or 23261A3204"
                 className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-xl px-4 py-3 pl-11 text-sm text-white placeholder-slate-500 font-mono transition-colors"
               />
               <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5" />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <span className="text-xs text-slate-500">
-                Sample: <button type="button" onClick={() => { setSearchQuery('IZ-2026-NH-8942'); handleVerify('IZ-2026-NH-8942'); }} className="text-cyan-400 hover:underline font-mono">IZ-2026-NH-8942</button>
+              <span className="text-xs text-slate-500 flex items-center gap-2">
+                Sample:
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('IZ-2026-NH-8942');
+                    handleVerify('IZ-2026-NH-8942');
+                  }}
+                  className="text-cyan-400 hover:underline font-mono"
+                >
+                  IZ-2026-NH-8942
+                </button>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('23261A3204');
+                    handleVerify('23261A3204');
+                  }}
+                  className="text-cyan-400 hover:underline font-mono"
+                >
+                  23261A3204
+                </button>
               </span>
               <button
                 type="submit"
@@ -295,11 +200,81 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
           )}
         </div>
 
+        {/* Multiple Matching Certificates Selection */}
+        {multipleCerts.length > 0 && (
+          <div className="max-w-4xl mx-auto space-y-4 no-print print:hidden">
+            <div className="p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-cyan-300 font-bold text-sm sm:text-base">
+                    Multiple Certificates Found ({multipleCerts.length})
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Registered under Roll Number: <span className="text-cyan-300 font-mono font-semibold">{multipleCerts[0].student_roll_no}</span> ({multipleCerts[0].student_name})
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono text-slate-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
+                Select a certificate to view
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {multipleCerts.map((cert) => (
+                <div
+                  key={cert.id}
+                  onClick={() => {
+                    setVerifiedCert(cert);
+                    setTimeout(() => {
+                      const target = document.getElementById('intelligenz-certificate-card');
+                      if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                  }}
+                  className={`cursor-pointer bg-slate-900/80 hover:bg-slate-900 border rounded-xl p-5 transition-all space-y-3 shadow-md ${
+                    verifiedCert?.id === cert.id
+                      ? 'border-cyan-400 ring-2 ring-cyan-500/20 bg-cyan-950/20'
+                      : 'border-slate-800 hover:border-cyan-500/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                      {cert.certificate_type}
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-400">{cert.issue_date}</span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-white line-clamp-1">{cert.event_title}</h4>
+                    <p className="text-xs font-mono text-slate-400 mt-1">
+                      ID: <span className="text-amber-400">{cert.certificate_code}</span>
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-mono text-[11px]">{cert.department}</span>
+                    <button
+                      type="button"
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px] font-semibold"
+                    >
+                      {verifiedCert?.id === cert.id ? 'Currently Selected' : 'View Certificate'} <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Verification Success Display */}
         {verifiedCert && (
           <div className="max-w-4xl mx-auto space-y-6">
-            {/* Status Banner */}
-            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4">
+            {/* Status Banner & Actions */}
+            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4 no-print print:hidden">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
                   <CheckCircle2 className="w-6 h-6" />
@@ -336,7 +311,10 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
             </div>
 
             {/* Premium IntelliGenZ Dark Theme Showcase Certificate */}
-            <div className="relative rounded-3xl bg-slate-950 border-2 border-slate-800 p-8 sm:p-12 shadow-2xl shadow-cyan-950/30 overflow-hidden">
+            <div
+              id="intelligenz-certificate-card"
+              className="certificate-dark-print-target relative rounded-3xl bg-slate-950 border-2 border-slate-800 p-8 sm:p-12 shadow-2xl shadow-cyan-950/30 overflow-hidden box-border"
+            >
               {/* Subtle Tech Cyber Grid & Ambient Radial Glows */}
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-900/15 via-slate-950/80 to-slate-950 pointer-events-none"></div>
               <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -358,7 +336,7 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
               </div>
 
               {/* Certificate Inner Content */}
-              <div className="relative z-10 text-center space-y-7">
+              <div className="relative z-10 text-center space-y-6 sm:space-y-7 flex flex-col justify-between h-full">
                 {/* Header Branding */}
                 <div className="flex flex-col items-center space-y-2">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-slate-900 border border-cyan-500/40 p-2.5 flex items-center justify-center shadow-lg shadow-cyan-500/10 mb-1">
@@ -393,12 +371,12 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
                 </div>
 
                 {/* Recipient Section */}
-                <div className="space-y-4 py-6 border-y border-slate-800/90 relative">
+                <div className="space-y-3 sm:space-y-4 py-4 sm:py-6 border-y border-slate-800/90 relative">
                   <p className="text-xs text-slate-400 italic font-serif tracking-wide">
                     This official credential is proudly awarded to
                   </p>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-amber-200 font-serif tracking-wide">
                       {verifiedCert.student_name}
                     </h1>
@@ -478,7 +456,7 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
         )}
 
         {/* Publicly Verified Certificates Catalog */}
-        <div className="space-y-6 pt-8 border-t border-slate-800">
+        <div className="space-y-6 pt-8 border-t border-slate-800 no-print print:hidden">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">

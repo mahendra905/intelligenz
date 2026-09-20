@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Certificate, CertificateType, Event, SiteSettings } from '../../types';
+import { printCertificateElement } from '../../lib/printCertificate';
 
 interface AdminCertificatesTabProps {
   onRefreshData?: () => void;
@@ -665,132 +666,6 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
       {/* Preview / Print Certificate Modal */}
       {previewCert && (
         <>
-          {/* Printable Certificate View (hidden on screen, visible only during print) */}
-          <div className="hidden print:flex certificate-printable-container box-border items-center justify-center bg-white text-slate-900">
-            <div className="relative border-[4px] border-slate-900 p-7 w-full h-full flex flex-col justify-between items-center text-center box-border rounded-lg bg-gradient-to-b from-amber-50/40 via-white to-amber-50/20">
-              {/* Inner Gold Precision Border */}
-              <div className="absolute inset-2 border-[1.5px] border-amber-700/60 pointer-events-none rounded"></div>
-              <div className="absolute inset-3.5 border-[0.5px] border-slate-400/40 pointer-events-none"></div>
-
-              {/* Corner Decorative Brackets */}
-              <div className="absolute top-4 left-4 text-amber-700 font-serif text-base font-bold">╔</div>
-              <div className="absolute top-4 right-4 text-amber-700 font-serif text-base font-bold">╗</div>
-              <div className="absolute bottom-4 left-4 text-amber-700 font-serif text-base font-bold">╚</div>
-              <div className="absolute bottom-4 right-4 text-amber-700 font-serif text-base font-bold">╝</div>
-
-              {/* Header: Institution & Department Branding */}
-              <div className="flex flex-col items-center pt-1 z-10">
-                <div className="flex items-center justify-center gap-3 mb-1">
-                  <div className="w-9 h-9 rounded-full bg-cyan-950 text-cyan-300 flex items-center justify-center font-bold text-xs border border-cyan-700/50 shadow-sm">
-                    <Award className="w-5 h-5 text-amber-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-[12px] font-black tracking-[0.2em] text-slate-900 uppercase font-sans">
-                      DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY
-                    </h3>
-                    <p className="text-[8.5px] tracking-wider text-slate-600 font-medium uppercase">
-                      Approved by AICTE, New Delhi • Affiliated to JNTUA, Ananthapuramu
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-[9.5px] font-bold text-slate-800 tracking-wider uppercase mt-0.5 pb-1 border-b border-slate-300 w-full max-w-xl">
-                  DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING (AIML) & ARTIFICIAL INTELLIGENCE
-                </div>
-
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-amber-700"></span>
-                  <span className="text-xl font-black tracking-[0.25em] text-cyan-950 font-mono">
-                    INTELLIGENZ CLUB
-                  </span>
-                  <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-amber-700"></span>
-                </div>
-
-                <div className="mt-1.5 inline-flex items-center gap-2 px-5 py-0.5 rounded-full bg-amber-100/90 border border-amber-600/60 shadow-xs">
-                  <span className="text-[8px] text-amber-900">✦</span>
-                  <span className="text-[10px] text-amber-950 font-extrabold font-mono tracking-[0.18em] uppercase">
-                    CERTIFICATE OF {previewCert.certificate_type.toUpperCase()}
-                  </span>
-                  <span className="text-[8px] text-amber-900">✦</span>
-                </div>
-              </div>
-
-              {/* Body: Recipient Details & Citation */}
-              <div className="my-auto py-1 max-w-2xl w-full z-10">
-                <p className="text-[11px] text-slate-600 italic font-serif">This credential is proudly presented to</p>
-                
-                <div className="my-1">
-                  <h1 className="text-3xl font-extrabold text-slate-950 font-serif tracking-wide">
-                    {previewCert.student_name}
-                  </h1>
-                  <div className="h-0.5 w-48 bg-gradient-to-r from-transparent via-amber-600 to-transparent mx-auto mt-0.5"></div>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-slate-700 mt-1">
-                  <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-semibold">
-                    Roll No: {previewCert.student_roll_no}
-                  </span>
-                  <span>•</span>
-                  <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded font-semibold">
-                    Dept: {previewCert.department}
-                  </span>
-                </div>
-
-                <p className="text-[9.5px] text-slate-500 mt-0.5 font-medium">{previewCert.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY'}</p>
-
-                <p className="text-[11.5px] text-slate-800 mt-2.5 leading-relaxed max-w-xl mx-auto font-sans">
-                  for active participation, technical innovation, and exceptional performance demonstrated in{' '}
-                  <span className="font-extrabold text-slate-950 font-serif">"{previewCert.event_title}"</span> organized by the IntelliGenZ Club.
-                </p>
-
-                {previewCert.notes && (
-                  <p className="text-[9.5px] text-slate-600 italic mt-1 font-serif">
-                    "{previewCert.notes}"
-                  </p>
-                )}
-              </div>
-
-              {/* Footer: Credential ID, Holographic Seal & Signing Authority */}
-              <div className="w-full grid grid-cols-3 items-end pb-1 pt-2 border-t border-slate-300/80 z-10">
-                {/* Left: Verification Metadata */}
-                <div className="text-left space-y-0.5">
-                  <p className="text-[8px] uppercase tracking-wider text-slate-500 font-mono font-semibold">Certificate ID</p>
-                  <p className="text-[11px] font-mono font-black text-slate-900 tracking-wide">{previewCert.certificate_code}</p>
-                  <div className="flex items-center gap-1.5 text-[8.5px] text-slate-600 font-mono">
-                    <span>Issued: {previewCert.issue_date}</span>
-                    <span>•</span>
-                    <span className="text-emerald-700 font-bold">Valid & Verified</span>
-                  </div>
-                </div>
-
-                {/* Center: Official Seal */}
-                <div className="flex flex-col items-center">
-                  <div className="w-13 h-13 rounded-full border-2 border-amber-700/60 p-0.5 bg-gradient-to-b from-amber-100 to-amber-50 shadow-xs flex items-center justify-center">
-                    <div className="w-full h-full rounded-full border border-dashed border-amber-800/60 flex flex-col items-center justify-center text-amber-900">
-                      <ShieldCheck className="w-5 h-5 text-amber-800" />
-                      <span className="text-[6.5px] font-black tracking-tighter uppercase font-mono mt-0.5">OFFICIAL SEAL</span>
-                    </div>
-                  </div>
-                  <span className="text-[7.5px] uppercase tracking-widest text-slate-600 font-mono font-bold mt-0.5">
-                    CSE (AIML) & AI • DRKVSRIT
-                  </span>
-                </div>
-
-                {/* Right: Signature & Authority */}
-                <div className="text-right space-y-0.5">
-                  <div className="w-36 ml-auto border-b border-slate-700 mb-1"></div>
-                  <p className="text-[11px] font-bold text-slate-950 font-sans">
-                    {settings?.certificate_signing_authority || settings?.certificate_lead_name || previewCert.issued_by}
-                  </p>
-                  <p className="text-[8.5px] text-slate-600 font-medium">
-                    {settings?.certificate_lead_designation || previewCert.designation || 'Faculty Coordinator & Head'}
-                  </p>
-                  <p className="text-[7.5px] text-slate-400 font-mono">Faculty Coordinator & Head</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* On-screen Preview Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm print:hidden">
             <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-4xl shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
@@ -801,7 +676,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => printCertificateElement('admin-certificate-card', previewCert.certificate_code)}
                     className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-cyan-500/20 transition-all"
                   >
                     <Printer className="w-3.5 h-3.5" />
@@ -817,13 +692,16 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
               </div>
 
               {/* Certificate Frame in Dark Theme */}
-              <div className="relative rounded-2xl bg-slate-950 border-2 border-slate-800 p-8 sm:p-10 shadow-2xl overflow-hidden text-center space-y-6">
+              <div
+                id="admin-certificate-card"
+                className="certificate-dark-print-target relative rounded-2xl bg-slate-950 border-2 border-slate-800 p-8 sm:p-10 shadow-2xl overflow-hidden text-center space-y-6 box-border"
+              >
                 {/* Tech Highlights */}
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-900/15 via-slate-950/80 to-slate-950 pointer-events-none"></div>
                 <div className="absolute inset-3 rounded-xl border border-amber-500/30 pointer-events-none"></div>
                 <div className="absolute inset-4 rounded-lg border border-cyan-500/20 pointer-events-none"></div>
 
-                <div className="relative z-10 space-y-5">
+                <div className="relative z-10 space-y-5 flex flex-col justify-between h-full">
                   <div className="flex flex-col items-center space-y-1.5">
                     <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300 mb-1">
                       <Award className="w-6 h-6 text-amber-400" />

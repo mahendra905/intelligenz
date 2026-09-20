@@ -1548,7 +1548,11 @@ async function startServer() {
 
   // TEAM
   app.get('/api/team', (req, res) => {
-    const sorted = [...db.team].sort((a, b) => a.order - b.order);
+    const sorted = [...db.team].sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : (a.order_index !== undefined ? a.order_index : 999);
+      const orderB = b.order !== undefined ? b.order : (b.order_index !== undefined ? b.order_index : 999);
+      return orderA - orderB;
+    });
     res.json(sorted);
   });
 
@@ -1798,22 +1802,23 @@ async function startServer() {
   });
 
   app.get('/api/certificates/verify/:code', (req, res) => {
-    const code = req.params.code.trim().toUpperCase();
-    const cert = db.certificates.find(
-      (c) => c.certificate_code.toUpperCase() === code
-    );
+    const rawCode = decodeURIComponent(req.params.code || '');
+    const cleaned = rawCode.trim();
 
-    if (!cert) {
-      res.status(404).json({
+    if (!cleaned) {
+      res.status(400).json({
         valid: false,
-        status: 'NotFound',
-        error: 'Certificate not found. Please verify the Certificate ID and try again.',
+        status: 'BadRequest',
+        error: 'Please enter a Certificate ID or Student Roll Number.',
       });
       return;
     }
 
-    // Public sanitized representation (excluding private email, phone, etc.)
-    const publicCert = {
+    const queryUpper = cleaned.toUpperCase();
+    const queryNormalized = cleaned.replace(/\s+/g, '').toUpperCase();
+
+    // Reusable public sanitization helper
+    const sanitizePublicCert = (cert: Certificate) => ({
       id: cert.id,
       certificate_code: cert.certificate_code,
       student_name: cert.student_name,
@@ -1828,26 +1833,111 @@ async function startServer() {
       designation: cert.designation,
       is_valid: cert.is_valid,
       notes: cert.notes,
-    };
+    });
 
-    if (!cert.is_valid) {
-      res.status(200).json({
-        valid: false,
-        status: 'Revoked',
-        error: 'CERTIFICATE REVOKED by Department of CSE (AIML) & AI Authority.',
+    // 1. Search by exact certificate_code (case-insensitive & trimmed)
+    const codeMatches = db.certificates.filter((c) => {
+      const cCode = (c.certificate_code || '').trim().toUpperCase();
+      const cCodeNorm = (c.certificate_code || '').replace(/\s+/g, '').toUpperCase();
+      return cCode === queryUpper || cCodeNorm === queryNormalized;
+    });
+
+    if (codeMatches.length > 0) {
+      const cert = codeMatches[0];
+      const publicCert = sanitizePublicCert(cert);
+
+      if (!cert.is_valid) {
+        res.status(200).json({
+          valid: false,
+          status: 'Revoked',
+          error: 'CERTIFICATE REVOKED by Department of CSE (AIML) & AI Authority.',
+          certificate: publicCert,
+          certificates: [publicCert],
+          count: 1,
+          match_type: 'certificate_id',
+          verification_time: new Date().toISOString(),
+          verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+        });
+        return;
+      }
+
+      res.json({
+        valid: true,
+        status: 'Valid',
         certificate: publicCert,
+        certificates: [publicCert],
+        count: 1,
+        match_type: 'certificate_id',
         verification_time: new Date().toISOString(),
         verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
       });
       return;
     }
 
-    res.json({
-      valid: true,
-      status: 'Valid',
-      certificate: publicCert,
-      verification_time: new Date().toISOString(),
-      verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    // 2. Search by student roll number using existing `student_roll_no` field
+    const rollMatches = db.certificates.filter((c) => {
+      const rollNo = (c.student_roll_no || '').replace(/\s+/g, '').toUpperCase();
+      if (!rollNo) return false;
+      if (rollNo === queryNormalized) return true;
+
+      // Handle university/college roll number alias between '26' and '2G' (e.g. 23261A3204 <-> 232G1A3204)
+      const normalizedDbRoll = rollNo.replace(/^(\d{2})26(1A.+)$/, '$12G$2');
+      const normalizedInputRoll = queryNormalized.replace(/^(\d{2})26(1A.+)$/, '$12G$2');
+      return normalizedDbRoll === normalizedInputRoll;
+    });
+
+    if (rollMatches.length === 1) {
+      const cert = rollMatches[0];
+      const publicCert = sanitizePublicCert(cert);
+
+      if (!cert.is_valid) {
+        res.status(200).json({
+          valid: false,
+          status: 'Revoked',
+          error: 'CERTIFICATE REVOKED by Department of CSE (AIML) & AI Authority.',
+          certificate: publicCert,
+          certificates: [publicCert],
+          count: 1,
+          match_type: 'roll_number',
+          verification_time: new Date().toISOString(),
+          verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+        });
+        return;
+      }
+
+      res.json({
+        valid: true,
+        status: 'Valid',
+        certificate: publicCert,
+        certificates: [publicCert],
+        count: 1,
+        match_type: 'roll_number',
+        verification_time: new Date().toISOString(),
+        verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+      });
+      return;
+    }
+
+    if (rollMatches.length > 1) {
+      const publicCerts = rollMatches.map(sanitizePublicCert);
+      res.json({
+        valid: true,
+        status: 'MultipleFound',
+        certificates: publicCerts,
+        count: publicCerts.length,
+        match_type: 'roll_number',
+        message: `Found ${publicCerts.length} certificates registered under roll number ${cleaned.toUpperCase()}.`,
+        verification_time: new Date().toISOString(),
+        verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+      });
+      return;
+    }
+
+    // 3. Neither certificate ID nor roll number matched
+    res.status(404).json({
+      valid: false,
+      status: 'NotFound',
+      error: 'Certificate not found. Please verify the Certificate ID or Student Roll Number and try again.',
     });
   });
 
@@ -2896,13 +2986,49 @@ async function startServer() {
 
   // Admin Team Management (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.post('/team', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+    const body = req.body || {};
+    const pos = (body.position || body.role || 'Member').trim();
+    const photo = (body.photo_url || body.image_url || '').trim();
+    const linkedin = (body.linkedin || body.social_links?.linkedin || '').trim();
+    const github = (body.github || body.social_links?.github || '').trim();
+    const email = (body.email || body.social_links?.email || '').trim();
+
     const newMember: TeamMember = {
-      ...req.body,
-      id: `tm-${Date.now()}`,
-      order: db.team.length + 1,
+      id: body.id || `tm-${Date.now()}`,
+      name: (body.name || '').trim(),
+      position: pos,
+      role: pos,
+      category: body.category || 'Technical Team',
+      department: (body.department || 'CSE (AIML) & AI').trim(),
+      year: (body.year || '').trim(),
+      bio: (body.bio || '').trim(),
+      photo_url: photo,
+      image_url: photo,
+      linkedin,
+      github,
+      email,
+      social_links: {
+        linkedin,
+        github,
+        email,
+        ...(body.social_links || {}),
+      },
+      featured: body.featured !== undefined ? !!body.featured : false,
+      order: body.order !== undefined ? Number(body.order) : (db.team.length + 1),
+      order_index: body.order_index !== undefined ? Number(body.order_index) : (body.order !== undefined ? Number(body.order) : (db.team.length + 1)),
     };
     db.team.push(newMember);
     saveDatabase(db);
+
+    logAdminAction(
+      'Team Member Added',
+      'TeamMember',
+      newMember.id,
+      `Admin added team member ${newMember.name} (${newMember.position})`,
+      (req as AuthenticatedRequest).adminUser?.email,
+      req
+    );
+
     res.status(201).json(newMember);
   });
 
@@ -2912,15 +3038,74 @@ async function startServer() {
       res.status(404).json({ error: 'Team member not found' });
       return;
     }
-    db.team[index] = { ...db.team[index], ...req.body };
+    const body = req.body || {};
+    const existing = db.team[index];
+    const pos = (body.position || body.role || existing.position || existing.role || 'Member').trim();
+    const photo = (body.photo_url !== undefined ? body.photo_url : (body.image_url !== undefined ? body.image_url : (existing.photo_url || existing.image_url || ''))).trim();
+    const linkedin = (body.linkedin !== undefined ? body.linkedin : (body.social_links?.linkedin !== undefined ? body.social_links.linkedin : (existing.linkedin || existing.social_links?.linkedin || ''))).trim();
+    const github = (body.github !== undefined ? body.github : (body.social_links?.github !== undefined ? body.social_links.github : (existing.github || existing.social_links?.github || ''))).trim();
+    const email = (body.email !== undefined ? body.email : (body.social_links?.email !== undefined ? body.social_links.email : (existing.email || existing.social_links?.email || ''))).trim();
+
+    db.team[index] = {
+      ...existing,
+      ...body,
+      id: existing.id,
+      name: body.name !== undefined ? body.name.trim() : existing.name,
+      position: pos,
+      role: pos,
+      category: body.category !== undefined ? body.category : existing.category,
+      department: body.department !== undefined ? body.department.trim() : existing.department,
+      year: body.year !== undefined ? body.year.trim() : existing.year,
+      bio: body.bio !== undefined ? body.bio.trim() : existing.bio,
+      photo_url: photo,
+      image_url: photo,
+      linkedin,
+      github,
+      email,
+      social_links: {
+        ...(existing.social_links || {}),
+        linkedin,
+        github,
+        email,
+        ...(body.social_links || {}),
+      },
+      featured: body.featured !== undefined ? !!body.featured : existing.featured,
+      order: body.order !== undefined ? Number(body.order) : existing.order,
+      order_index: body.order_index !== undefined ? Number(body.order_index) : existing.order_index,
+    };
     saveDatabase(db);
+
+    logAdminAction(
+      'Team Member Updated',
+      'TeamMember',
+      existing.id,
+      `Admin updated team member ${db.team[index].name} (${db.team[index].position})`,
+      (req as AuthenticatedRequest).adminUser?.email,
+      req
+    );
+
     res.json(db.team[index]);
   });
 
   adminRouter.delete('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+    const target = db.team.find((t) => t.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'Team member not found' });
+      return;
+    }
     db.team = db.team.filter((t) => t.id !== req.params.id);
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Team Member Deleted',
+      'TeamMember',
+      req.params.id,
+      `Admin removed team member ${target.name} (${target.position || target.role})`,
+      (req as AuthenticatedRequest).adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Team member deleted' });
   });
 
   // Admin Projects Management (SUPER_ADMIN, ADMIN, EDITOR)

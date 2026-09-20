@@ -50,10 +50,11 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
   ];
 
   const filtered = team.filter((m) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.role.toLowerCase().includes(search.toLowerCase()) ||
-      m.department.toLowerCase().includes(search.toLowerCase());
+    const roleOrPos = (m.position || m.role || '').toLowerCase();
+    const dept = (m.department || '').toLowerCase();
+    const name = (m.name || '').toLowerCase();
+    const query = search.toLowerCase();
+    const matchesSearch = name.includes(query) || roleOrPos.includes(query) || dept.includes(query);
     const matchesCat = categoryFilter === 'All' || m.category === categoryFilter;
     return matchesSearch && matchesCat;
   });
@@ -62,12 +63,15 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
     setEditingMember({
       name: '',
       role: 'Core Member',
+      position: 'Core Member',
       category: 'Technical Team',
       department: 'CSE (AIML) & AI',
       year: '3rd Year',
       bio: '',
       image_url: '',
+      photo_url: '',
       order_index: (team.length + 1) * 10,
+      order: team.length + 1,
       social_links: {
         linkedin: '',
         github: '',
@@ -78,7 +82,28 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
   };
 
   const handleOpenEdit = (mem: TeamMember) => {
-    setEditingMember({ ...mem });
+    const pos = mem.position || mem.role || '';
+    const img = mem.photo_url || mem.image_url || '';
+    const linkedin = mem.linkedin || mem.social_links?.linkedin || '';
+    const github = mem.github || mem.social_links?.github || '';
+    const email = mem.email || mem.social_links?.email || '';
+
+    setEditingMember({
+      ...mem,
+      role: pos,
+      position: pos,
+      image_url: img,
+      photo_url: img,
+      department: mem.department || '',
+      year: mem.year || '',
+      bio: mem.bio || '',
+      social_links: {
+        linkedin,
+        github,
+        email,
+        ...mem.social_links,
+      },
+    });
     setIsModalOpen(true);
   };
 
@@ -87,7 +112,34 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
     if (!editingMember?.name) return;
     setSaving(true);
     try {
-      await onSaveMember(editingMember);
+      const pos = (editingMember.role || editingMember.position || 'Member').trim();
+      const img = (editingMember.image_url || editingMember.photo_url || '').trim();
+      const linkedin = (editingMember.social_links?.linkedin || editingMember.linkedin || '').trim();
+      const github = (editingMember.social_links?.github || editingMember.github || '').trim();
+      const email = (editingMember.social_links?.email || editingMember.email || '').trim();
+
+      const payload: Partial<TeamMember> = {
+        ...editingMember,
+        name: editingMember.name.trim(),
+        role: pos,
+        position: pos,
+        image_url: img,
+        photo_url: img,
+        department: (editingMember.department || 'CSE (AIML) & AI').trim(),
+        year: (editingMember.year || '').trim(),
+        bio: (editingMember.bio || '').trim(),
+        linkedin,
+        github,
+        email,
+        social_links: {
+          linkedin,
+          github,
+          email,
+          ...(editingMember.social_links || {}),
+        },
+      };
+
+      await onSaveMember(payload);
       setIsModalOpen(false);
       setEditingMember(null);
     } finally {
@@ -173,7 +225,7 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
                     <img
-                      src={mem.image_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}
+                      src={mem.photo_url || mem.image_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}
                       alt={mem.name}
                       className="w-12 h-12 rounded-xl object-cover border border-[#1A1C23] shrink-0"
                     />
@@ -206,7 +258,7 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
                 </div>
 
                 <div className="text-xs text-[#9CA3AF] font-medium">
-                  {mem.role}
+                  {mem.position || mem.role || 'Member'}
                 </div>
                 <div className="text-[11px] text-[#6B7280]">
                   {mem.department} {mem.year ? `• ${mem.year}` : ''}
@@ -220,11 +272,11 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
               </div>
 
               <div className="mt-3 pt-2.5 border-t border-[#1A1C23] flex items-center justify-between text-xs text-[#6B7280]">
-                <span className="text-[10px]">Order: #{mem.order_index ?? 0}</span>
+                <span className="text-[10px]">Order: #{mem.order ?? mem.order_index ?? 0}</span>
                 <div className="flex items-center gap-2">
-                  {mem.social_links?.linkedin && (
+                  {(mem.linkedin || mem.social_links?.linkedin) && (
                     <a
-                      href={mem.social_links.linkedin}
+                      href={mem.linkedin || mem.social_links?.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-white"
@@ -232,9 +284,9 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
                       <Linkedin className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  {mem.social_links?.github && (
+                  {(mem.github || mem.social_links?.github) && (
                     <a
-                      href={mem.social_links.github}
+                      href={mem.github || mem.social_links?.github}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-white"
@@ -242,9 +294,9 @@ export const AdminTeamTab: React.FC<AdminTeamTabProps> = ({
                       <Github className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  {mem.social_links?.email && (
+                  {(mem.email || mem.social_links?.email) && (
                     <a
-                      href={`mailto:${mem.social_links.email}`}
+                      href={(mem.email || mem.social_links?.email || '').startsWith('mailto:') ? (mem.email || mem.social_links?.email) : `mailto:${mem.email || mem.social_links?.email}`}
                       className="hover:text-white"
                     >
                       <Mail className="w-3.5 h-3.5" />
