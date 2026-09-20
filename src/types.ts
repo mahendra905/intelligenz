@@ -79,7 +79,6 @@ export type AnnouncementCategory =
   | 'Events'
   | 'Event'
   | 'Club News'
-  | 'Achievements'
   | 'Recruitment'
   | 'Workshops'
   | 'Workshop'
@@ -153,6 +152,9 @@ export interface EventRegistration {
   ticket_code?: string;
   qr_token?: string;
   qr_payload?: string;
+  email_status?: 'pending' | 'sent' | 'failed' | 'disabled';
+  email_sent_at?: string;
+  email_error?: string;
   registered_at?: string;
   created_at: string;
 }
@@ -226,21 +228,6 @@ export interface Project {
   featured: boolean;
   status: 'Completed' | 'In Progress' | 'Prototype' | 'Active Development' | 'Production' | string;
   date?: string;
-}
-
-export interface Achievement {
-  id: string;
-  title: string;
-  category: string;
-  date: string;
-  description: string;
-  award_rank?: string;
-  organization: string;
-  members: string[];
-  image_url?: string;
-  featured: boolean;
-  proof_link?: string;
-  proof_url?: string;
 }
 
 export interface GalleryImage {
@@ -318,6 +305,10 @@ export interface SiteSettings {
   };
   announcement_ticker?: string;
   is_recruitment_open: boolean;
+  join_us_status?: boolean;
+  automated_email_enabled?: boolean;
+  email_sender_name?: string;
+  email_sender_address?: string;
   [key: string]: any;
 }
 
@@ -463,28 +454,6 @@ export interface AttendanceRosterResponse {
     attendance_rate: number;
   };
   roster: AttendanceRosterItem[];
-}
-
-export interface LearningResource {
-  id: string;
-  title: string;
-  slug?: string;
-  category: 'Roadmaps' | 'AI Models & LLMs' | 'Computer Vision' | 'Prompt Engineering' | 'Python & Data Science' | 'Cloud & MLOps' | string;
-  description: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | string;
-  duration?: string;
-  url?: string;
-  link_url?: string;
-  format?: string;
-  tags: string[];
-  modules?: {
-    title: string;
-    description: string;
-    resources: { title: string; url: string; type: 'doc' | 'video' | 'colab' | 'github' }[];
-  }[];
-  featured: boolean;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface AuditLog {

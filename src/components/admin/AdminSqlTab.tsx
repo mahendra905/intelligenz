@@ -273,7 +273,7 @@ export const AdminSqlTab: React.FC<AdminSqlTabProps> = ({ sqlSchema }) => {
               <input
                 type="text"
                 placeholder="Search audit actions, entities, or admin..."
-                value={searchLog}
+                value={searchLog || ''}
                 onChange={(e) => setSearchLog(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#0D1017] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:border-[#00E5FF] focus:outline-none"
               />

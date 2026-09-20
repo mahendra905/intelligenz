@@ -3,7 +3,6 @@ import {
   Announcement,
   TeamMember,
   Project,
-  Achievement,
   GalleryImage,
   SiteStats,
   SiteSettings,
@@ -25,6 +24,10 @@ export const INITIAL_SETTINGS: SiteSettings = {
   github_url: 'https://github.com/intelligenz-drkvsrit',
   announcement_ticker: '🚀 Registrations Open for "NeuroHack 2026: 24-Hour AI Hackathon" & Generative AI Workshop!',
   is_recruitment_open: true,
+  join_us_status: true,
+  automated_email_enabled: true,
+  email_sender_name: 'IntelliGenZ Club',
+  email_sender_address: 'intelligenz@drkvsrit.ac.in',
 };
 
 export const INITIAL_COMMUNITY_IMPACT_STATS: CommunityImpactStat[] = [
@@ -263,12 +266,12 @@ All 1st, 2nd, and 3rd-year engineering students with a hunger to learn and innov
     content: `Hearty congratulations to Team 'NeuroPulse' and Team 'VisionGrid' for being selected for the Grand Finale of the National Smart Innovation Challenge!
 
 Their innovative projects on **AI-Driven Crop Disease Diagnosis via Satellite Imaging** and **Smart Traffic Density AI Optimizer** were lauded by the technical jury. The management and faculty of DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY congratulate the teams.`,
-    category: 'Achievements',
+    category: 'Hackathon',
     author: 'Head of Department',
     author_role: 'Dept. of CSE (AIML) & AI',
     published_at: '2026-08-22T11:30:00Z',
     featured: true,
-    tags: ['Achievements', 'Hackathon', 'ProudMoment'],
+    tags: ['Hackathon', 'National', 'ProudMoment'],
     created_at: '2026-08-22T11:30:00Z',
     updated_at: '2026-08-22T11:30:00Z',
   },
@@ -451,45 +454,6 @@ export const INITIAL_PROJECTS: Project[] = [
   },
 ];
 
-export const INITIAL_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'ach-1',
-    title: '1st Prize - State Level AI Project Expo 2026',
-    category: 'State Competition',
-    date: '2026-07-18',
-    description: 'Awarded 1st place and ₹25,000 cash prize among 85 competing engineering colleges for the RetinaScan AI health diagnostics project.',
-    organization: 'Andhra Pradesh State Technical Innovation Council',
-    award_rank: 'Winner (Gold Medal)',
-    members: ['A. Rahul Sharma', 'K. Vishnu Vardhan', 'N. Sahithi Reddy'],
-    image_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-  },
-  {
-    id: 'ach-2',
-    title: 'Finalists - National Smart Innovation Hackathon',
-    category: 'National Hackathon',
-    date: '2026-05-10',
-    description: 'Selected in top 15 out of 1,200 national submissions for autonomous agricultural intelligence solutions.',
-    organization: 'Ministry of Education Innovation Cell & AICTE',
-    award_rank: 'National Finalist',
-    members: ['IntelliGenZ Core Team Alpha'],
-    image_url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-  },
-  {
-    id: 'ach-3',
-    title: 'Best Technical Student Chapter Award 2025-26',
-    category: 'Institutional Award',
-    date: '2026-03-20',
-    description: 'Recognized as the most active, impactful, and innovative departmental student club at DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY Annual Day.',
-    organization: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY Management',
-    award_rank: 'Best Technical Club',
-    members: ['Department of CSE (AIML) & AI Faculty & Students'],
-    image_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
-    featured: true,
-  },
-];
-
 export const INITIAL_GALLERY: GalleryImage[] = [
   {
     id: 'gal-1',
@@ -640,92 +604,3 @@ export const INITIAL_SUBSCRIBERS = [
   },
 ];
 
-export const INITIAL_RESOURCES = [
-  {
-    id: 'res-ai-agent-roadmap',
-    title: 'Autonomous AI Agents & Multimodal LLM Mastery',
-    slug: 'ai-agents-multimodal-roadmap',
-    category: 'Roadmaps' as const,
-    description: 'Complete step-by-step roadmap from prompt engineering to tool-calling multi-agent swarms with Gemini, LangChain, and Vector Databases.',
-    level: 'Intermediate' as const,
-    duration: '4 Weeks',
-    tags: ['Gemini 2.5/3', 'LangChain', 'Function Calling', 'RAG', 'Vector Search'],
-    featured: true,
-    modules: [
-      {
-        title: 'Module 1: Foundation Models & Prompt Engineering',
-        description: 'Master few-shot prompting, structured JSON schema outputs, thinking levels, and token optimization.',
-        resources: [
-          { title: 'Google AI Studio Documentation', url: 'https://ai.google.dev/docs', type: 'doc' as const },
-          { title: 'DeepLearning.AI Prompt Engineering Course', url: 'https://learn.deeplearning.ai', type: 'video' as const },
-        ],
-      },
-      {
-        title: 'Module 2: Tool Calling & Function Execution',
-        description: 'Connecting Gemini to real-world APIs, external tools, database queries, and code interpreters.',
-        resources: [
-          { title: 'Gemini Function Calling Guide', url: 'https://ai.google.dev/gemini-api/docs/function-calling', type: 'doc' as const },
-          { title: 'IntelliGenZ Agent Starter Repo', url: 'https://github.com/intelligenz-drkvsrit', type: 'github' as const },
-        ],
-      },
-      {
-        title: 'Module 3: Retrieval Augmented Generation (RAG)',
-        description: 'Vector embeddings, chunking strategies, semantic similarity search, and hybrid retrieval.',
-        resources: [
-          { title: 'Interactive Colab: Building RAG with ChromaDB', url: 'https://colab.research.google.com', type: 'colab' as const },
-        ],
-      },
-    ],
-    created_at: '2026-08-20T12:00:00Z',
-  },
-  {
-    id: 'res-computer-vision-edge',
-    title: 'Computer Vision & Edge AI with PyTorch and YOLO',
-    slug: 'computer-vision-edge-ai',
-    category: 'Computer Vision' as const,
-    description: 'Learn real-time object tracking, facial recognition, pose estimation, and deploying quantized models on edge boards.',
-    level: 'Beginner' as const,
-    duration: '6 Weeks',
-    tags: ['PyTorch', 'OpenCV', 'YOLOv11', 'Jetson Nano', 'Edge AI'],
-    featured: true,
-    modules: [
-      {
-        title: 'Module 1: Digital Image Processing & OpenCV Fundamentals',
-        description: 'Color spaces, spatial filtering, contours, edge detection, and real-time webcam streams.',
-        resources: [
-          { title: 'OpenCV Official Python Tutorials', url: 'https://docs.opencv.org', type: 'doc' as const },
-        ],
-      },
-      {
-        title: 'Module 2: Object Detection with YOLO',
-        description: 'Annotation with Roboflow, transfer learning, mAP metrics, and inference optimization.',
-        resources: [
-          { title: 'Ultralytics YOLO Quickstart', url: 'https://docs.ultralytics.com', type: 'doc' as const },
-          { title: 'Colab: Train Custom Detection Model', url: 'https://colab.research.google.com', type: 'colab' as const },
-        ],
-      },
-    ],
-    created_at: '2026-08-22T10:00:00Z',
-  },
-  {
-    id: 'res-python-mlops',
-    title: 'Production Machine Learning & MLOps Pipeline',
-    slug: 'production-ml-mlops',
-    category: 'Cloud & MLOps' as const,
-    description: 'Taking models from Jupyter notebooks to Docker containers, CI/CD automated retraining, FastAPI serving, and Cloud Run deployment.',
-    level: 'Advanced' as const,
-    duration: '3 Weeks',
-    tags: ['FastAPI', 'Docker', 'MLflow', 'Cloud Run', 'Monitoring'],
-    featured: false,
-    modules: [
-      {
-        title: 'Module 1: Microservice Model Serving with FastAPI',
-        description: 'Pydantic schemas, batch inference, async request queues, and health checks.',
-        resources: [
-          { title: 'FastAPI Machine Learning Blueprint', url: 'https://fastapi.tiangolo.com', type: 'doc' as const },
-        ],
-      },
-    ],
-    created_at: '2026-08-25T14:00:00Z',
-  },
-];

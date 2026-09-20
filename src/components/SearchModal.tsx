@@ -82,7 +82,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             type="text"
             autoFocus
             placeholder="Search events, workshops, projects, announcements..."
-            value={query}
+            value={query || ''}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-11 pr-10 py-3 rounded-2xl bg-slate-950/90 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
           />

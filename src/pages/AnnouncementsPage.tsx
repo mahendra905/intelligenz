@@ -17,7 +17,7 @@ export const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = ['All', 'Events', 'Club News', 'Achievements', 'Recruitment', 'Workshops', 'Important'];
+  const categories = ['All', 'Events', 'Club News', 'Recruitment', 'Workshops', 'Important'];
 
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter((a) => {
@@ -63,7 +63,7 @@ export const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({
           <input
             type="text"
             placeholder="Search circulars, tags or keywords..."
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
           />

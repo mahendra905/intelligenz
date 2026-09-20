@@ -13,7 +13,22 @@
     "linkedin_url": "https://linkedin.com/company/intelligenz-drkvsrit",
     "github_url": "https://github.com/intelligenz-drkvsrit",
     "announcement_ticker": "🚀 Registrations Open for \"NeuroHack 2026: 24-Hour AI Hackathon\" & Generative AI Workshop!",
-    "is_recruitment_open": true
+    "is_recruitment_open": false,
+    "join_us_status": false,
+    "club_tagline": "",
+    "contact_email": "",
+    "contact_phone": "",
+    "contact_address": "",
+    "social_links": {
+      "github": "",
+      "linkedin": "",
+      "instagram": "",
+      "youtube": "",
+      "discord": ""
+    },
+    "automated_email_enabled": true,
+    "email_sender_name": "IntelliGenZ Club",
+    "email_sender_address": "intelligenz@drkvsrit.ac.in"
   },
   "stats": {
     "students_reached": "650+",
@@ -101,7 +116,7 @@
       "speaker": "Er. Rajesh Varma",
       "speaker_bio": "Principal AI Architect at TechCorp Labs & Ex-Google Developer Expert",
       "maximum_participants": 200,
-      "current_participants": 142,
+      "current_participants": 148,
       "status": "Registration Open",
       "featured": true,
       "highlights": [
@@ -131,7 +146,7 @@
       "speaker": "Dr. Priya Sundaram",
       "speaker_bio": "Senior Research Scientist in NLP and Generative AI systems",
       "maximum_participants": 90,
-      "current_participants": 86,
+      "current_participants": 92,
       "status": "Registration Open",
       "featured": true,
       "highlights": [
@@ -242,13 +257,12 @@
       "slug": "national-ai-challenge-shortlist-success",
       "summary": "Two teams from CSE (AIML) mentored by IntelliGenZ club faculty have reached the Grand Finale among 400+ nationwide institutions.",
       "content": "Hearty congratulations to Team 'NeuroPulse' and Team 'VisionGrid' for being selected for the Grand Finale of the National Smart Innovation Challenge!\n\nTheir innovative projects on **AI-Driven Crop Disease Diagnosis via Satellite Imaging** and **Smart Traffic Density AI Optimizer** were lauded by the technical jury. The management and faculty of DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY congratulate the teams.",
-      "category": "Achievements",
+      "category": "Hackathons",
       "author": "Head of Department",
       "author_role": "Dept. of CSE (AIML) & AI",
       "published_at": "2026-08-22T11:30:00Z",
       "featured": true,
       "tags": [
-        "Achievements",
         "Hackathon",
         "ProudMoment"
       ],
@@ -471,52 +485,6 @@
       "date": "2026-07"
     }
   ],
-  "achievements": [
-    {
-      "id": "ach-1",
-      "title": "1st Prize - State Level AI Project Expo 2026",
-      "category": "State Competition",
-      "date": "2026-07-18",
-      "description": "Awarded 1st place and ₹25,000 cash prize among 85 competing engineering colleges for the RetinaScan AI health diagnostics project.",
-      "organization": "Andhra Pradesh State Technical Innovation Council",
-      "award_rank": "Winner (Gold Medal)",
-      "members": [
-        "A. Rahul Sharma",
-        "K. Vishnu Vardhan",
-        "N. Sahithi Reddy"
-      ],
-      "image_url": "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&w=800&q=80",
-      "featured": true
-    },
-    {
-      "id": "ach-2",
-      "title": "Finalists - National Smart Innovation Hackathon",
-      "category": "National Hackathon",
-      "date": "2026-05-10",
-      "description": "Selected in top 15 out of 1,200 national submissions for autonomous agricultural intelligence solutions.",
-      "organization": "Ministry of Education Innovation Cell & AICTE",
-      "award_rank": "National Finalist",
-      "members": [
-        "IntelliGenZ Core Team Alpha"
-      ],
-      "image_url": "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80",
-      "featured": true
-    },
-    {
-      "id": "ach-3",
-      "title": "Best Technical Student Chapter Award 2025-26",
-      "category": "Institutional Award",
-      "date": "2026-03-20",
-      "description": "Recognized as the most active, impactful, and innovative departmental student club at DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY Annual Day.",
-      "organization": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY Management",
-      "award_rank": "Best Technical Club",
-      "members": [
-        "Department of CSE (AIML) & AI Faculty & Students"
-      ],
-      "image_url": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80",
-      "featured": true
-    }
-  ],
   "gallery": [
     {
       "id": "gal-1",
@@ -582,31 +550,6 @@
   "join_applications": [],
   "registrations": [
     {
-      "id": "reg-neuro-104201",
-      "event_id": "evt-neurohack-2026",
-      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "full_name": "Aarav Sharma",
-      "email": "aarav.sharma@example.com",
-      "phone": "9876543210",
-      "department": "CSE (AIML)",
-      "year": "3rd Year",
-      "roll_number": "22K61A4201",
-      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-      "participation_type": "TEAM",
-      "team_name": "Neural Pioneers",
-      "team_members": [
-        {
-          "full_name": "Priya Patel",
-          "email": "priya.patel@example.com",
-          "roll_number": "22K61A4202",
-          "department": "CSE (AIML)",
-          "year": "3rd Year"
-        }
-      ],
-      "status": "Confirmed",
-      "created_at": "2026-09-03T13:05:51.561Z"
-    },
-    {
       "id": "reg-genai-104215",
       "event_id": "evt-genai-masterclass",
       "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
@@ -618,8 +561,11 @@
       "roll_number": "22K61A4215",
       "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
       "participation_type": "SOLO",
-      "status": "Confirmed",
-      "created_at": "2026-09-03T13:05:51.561Z"
+      "status": "Attended",
+      "created_at": "2026-09-03T13:05:51.561Z",
+      "ticket_code": "TKT-104215",
+      "qr_token": "qrat_genai104215_104215",
+      "qr_payload": "ATTENDANCE:qrat_genai104215_104215"
     },
     {
       "id": "reg-neuro-104230",
@@ -634,7 +580,10 @@
       "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
       "participation_type": "SOLO",
       "status": "Confirmed",
-      "created_at": "2026-09-03T13:05:51.561Z"
+      "created_at": "2026-09-03T13:05:51.561Z",
+      "ticket_code": "TKT-104230",
+      "qr_token": "qrat_neuro104230_104230",
+      "qr_payload": "ATTENDANCE:qrat_neuro104230_104230"
     }
   ],
   "messages": [],
@@ -650,8 +599,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-03T12:47:47.665Z",
-      "last_login_at": "2026-09-03T12:47:47.665Z",
+      "updated_at": "2026-09-20T11:04:50.843Z",
+      "last_login_at": "2026-09-20T11:04:50.843Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -754,151 +703,237 @@
     }
   ],
   "newsletter_broadcasts": [],
-  "resources": [
+  "checkins": [
     {
-      "id": "res-ai-agent-roadmap",
-      "title": "Autonomous AI Agents & Multimodal LLM Mastery",
-      "slug": "ai-agents-multimodal-roadmap",
-      "category": "Roadmaps",
-      "description": "Complete step-by-step roadmap from prompt engineering to tool-calling multi-agent swarms with Gemini, LangChain, and Vector Databases.",
-      "level": "Intermediate",
-      "duration": "4 Weeks",
-      "tags": [
-        "Gemini 2.5/3",
-        "LangChain",
-        "Function Calling",
-        "RAG",
-        "Vector Search"
-      ],
-      "featured": true,
-      "modules": [
-        {
-          "title": "Module 1: Foundation Models & Prompt Engineering",
-          "description": "Master few-shot prompting, structured JSON schema outputs, thinking levels, and token optimization.",
-          "resources": [
-            {
-              "title": "Google AI Studio Documentation",
-              "url": "https://ai.google.dev/docs",
-              "type": "doc"
-            },
-            {
-              "title": "DeepLearning.AI Prompt Engineering Course",
-              "url": "https://learn.deeplearning.ai",
-              "type": "video"
-            }
-          ]
-        },
-        {
-          "title": "Module 2: Tool Calling & Function Execution",
-          "description": "Connecting Gemini to real-world APIs, external tools, database queries, and code interpreters.",
-          "resources": [
-            {
-              "title": "Gemini Function Calling Guide",
-              "url": "https://ai.google.dev/gemini-api/docs/function-calling",
-              "type": "doc"
-            },
-            {
-              "title": "IntelliGenZ Agent Starter Repo",
-              "url": "https://github.com/intelligenz-drkvsrit",
-              "type": "github"
-            }
-          ]
-        },
-        {
-          "title": "Module 3: Retrieval Augmented Generation (RAG)",
-          "description": "Vector embeddings, chunking strategies, semantic similarity search, and hybrid retrieval.",
-          "resources": [
-            {
-              "title": "Interactive Colab: Building RAG with ChromaDB",
-              "url": "https://colab.research.google.com",
-              "type": "colab"
-            }
-          ]
-        }
-      ],
-      "created_at": "2026-08-20T12:00:00Z"
+      "id": "chk-1789902367311-d31bc",
+      "registration_id": "reg-1789902269728-wov23t",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "ramesh",
+      "roll_number": "24FH1A3303",
+      "email": "ramesh@gmail.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-20T11:06:07.311Z",
+      "checkin_method": "Roster Action"
     },
     {
-      "id": "res-computer-vision-edge",
-      "title": "Computer Vision & Edge AI with PyTorch and YOLO",
-      "slug": "computer-vision-edge-ai",
-      "category": "Computer Vision",
-      "description": "Learn real-time object tracking, facial recognition, pose estimation, and deploying quantized models on edge boards.",
-      "level": "Beginner",
-      "duration": "6 Weeks",
-      "tags": [
-        "PyTorch",
-        "OpenCV",
-        "YOLOv11",
-        "Jetson Nano",
-        "Edge AI"
-      ],
-      "featured": true,
-      "modules": [
-        {
-          "title": "Module 1: Digital Image Processing & OpenCV Fundamentals",
-          "description": "Color spaces, spatial filtering, contours, edge detection, and real-time webcam streams.",
-          "resources": [
-            {
-              "title": "OpenCV Official Python Tutorials",
-              "url": "https://docs.opencv.org",
-              "type": "doc"
-            }
-          ]
-        },
-        {
-          "title": "Module 2: Object Detection with YOLO",
-          "description": "Annotation with Roboflow, transfer learning, mAP metrics, and inference optimization.",
-          "resources": [
-            {
-              "title": "Ultralytics YOLO Quickstart",
-              "url": "https://docs.ultralytics.com",
-              "type": "doc"
-            },
-            {
-              "title": "Colab: Train Custom Detection Model",
-              "url": "https://colab.research.google.com",
-              "type": "colab"
-            }
-          ]
-        }
-      ],
-      "created_at": "2026-08-22T10:00:00Z"
+      "id": "chk-1789902341371-kjped",
+      "registration_id": "reg-1789900931156-dhjqfm",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "mahi",
+      "roll_number": "24FH1A3315",
+      "email": "mahi678@gmail.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-20T11:05:41.371Z",
+      "checkin_method": "Roster Action"
     },
     {
-      "id": "res-python-mlops",
-      "title": "Production Machine Learning & MLOps Pipeline",
-      "slug": "production-ml-mlops",
-      "category": "Cloud & MLOps",
-      "description": "Taking models from Jupyter notebooks to Docker containers, CI/CD automated retraining, FastAPI serving, and Cloud Run deployment.",
-      "level": "Advanced",
-      "duration": "3 Weeks",
-      "tags": [
-        "FastAPI",
-        "Docker",
-        "MLflow",
-        "Cloud Run",
-        "Monitoring"
-      ],
-      "featured": false,
-      "modules": [
-        {
-          "title": "Module 1: Microservice Model Serving with FastAPI",
-          "description": "Pydantic schemas, batch inference, async request queues, and health checks.",
-          "resources": [
-            {
-              "title": "FastAPI Machine Learning Blueprint",
-              "url": "https://fastapi.tiangolo.com",
-              "type": "doc"
-            }
-          ]
-        }
-      ],
-      "created_at": "2026-08-25T14:00:00Z"
+      "id": "chk-1788443535282-p09ui",
+      "registration_id": "reg-1788443535269-mu0fym",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "Rahul Sharma",
+      "roll_number": "24GEN7972",
+      "email": "rahul.1788443535267@gmail.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:52:15.282Z",
+      "checkin_method": "QR Code"
+    },
+    {
+      "id": "chk-1788443259354-fo7sc",
+      "registration_id": "reg-1788443259346-p9hmgu",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "Aman Gupta",
+      "roll_number": "24GEN8961",
+      "email": "aman1788443259344@test.com",
+      "department": "CSE (AI)",
+      "checked_in_at": "2026-09-03T13:47:39.354Z",
+      "checkin_method": "QR Code"
+    },
+    {
+      "id": "chk-1788443119778-5adie",
+      "registration_id": "reg-1788443013627-ktx0r5",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "hitesh",
+      "roll_number": "24FH1A3360",
+      "email": "hitesh@gmail.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:45:19.778Z",
+      "checkin_method": "QR Code Upload"
+    },
+    {
+      "id": "chk-1788441279656-ow5df",
+      "registration_id": "reg-genai-104215",
+      "event_id": "evt-genai-masterclass",
+      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "participant_name": "Rohan Verma",
+      "roll_number": "22K61A4215",
+      "email": "rohan.verma@example.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:14:39.656Z",
+      "checkin_method": "Roster Action"
+    },
+    {
+      "id": "chk-1788441255288-ow4l4",
+      "registration_id": "reg-neuro-104201",
+      "event_id": "evt-neurohack-2026",
+      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "participant_name": "Aarav Sharma",
+      "roll_number": "22K61A4201",
+      "email": "aarav.sharma@example.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:14:15.288Z",
+      "checkin_method": "Roster Action"
+    },
+    {
+      "id": "chk-1788441208176-j7w7s",
+      "registration_id": "reg-1788441074427-571si5",
+      "event_id": "evt-neurohack-2026",
+      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "participant_name": "mahendra",
+      "roll_number": "24FH1A3360",
+      "email": "mahi@gamil.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:13:28.176Z",
+      "checkin_method": "Rapid Scanner"
+    },
+    {
+      "id": "chk-1788441189519-3eqd4",
+      "registration_id": "reg-1788441074427-571si5",
+      "event_id": "evt-neurohack-2026",
+      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "participant_name": "ajay",
+      "roll_number": "24FH1A3325",
+      "email": "ajay@gmail.com",
+      "department": "CSE (AIML)",
+      "checked_in_at": "2026-09-03T13:13:09.519Z",
+      "checkin_method": "Admin Terminal"
     }
   ],
-  "checkins": [],
   "audit_logs": [
+    {
+      "id": "log-1789902290844-ulb4v",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-20T11:04:50.844Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789900821225-yownk",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-20T10:40:21.225Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789900755227-39qit",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-20T10:39:15.227Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789900745976-93xg9",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-20T10:39:05.976Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789900745972-ve1oz",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-20T10:39:05.972Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789900464898-hy302",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-20T10:34:24.898Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788443535261-sbl2k",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T13:52:15.261Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788443259338-ritlf",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T13:47:39.338Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788443238175-9mhh7",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T13:47:18.175Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788443080762-mo6a9",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "admin@intelligenz.club",
+      "admin_email": "admin@intelligenz.club",
+      "details": "Failed login attempt for unknown account 'admin@intelligenz.club'",
+      "timestamp": "2026-09-03T13:44:40.762Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788443075889-2ubek",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T13:44:35.889Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1788441097179-p9a1y",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-03T13:11:37.179Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1788440673290-b184i",
       "action": "Session Expired",

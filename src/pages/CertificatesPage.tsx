@@ -189,7 +189,7 @@ export function CertificatesPage({ onNavigate }: CertificatesPageProps) {
             <div className="relative">
               <input
                 type="text"
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="e.g. IZ-2026-NH-8942 or 22K61A4201"
                 className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-xl px-4 py-3 pl-11 text-sm text-white placeholder-slate-500 font-mono transition-colors"

@@ -111,7 +111,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 type="text"
                 required
                 autoComplete="username"
-                value={identifier}
+                value={identifier || ''}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="Enter admin email or username"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder:text-[#4B5563] focus:outline-none focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF] transition-colors"
@@ -149,7 +149,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 type={showPassword ? 'text' : 'password'}
                 required
                 autoComplete="current-password"
-                value={password}
+                value={password || ''}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder:text-[#4B5563] focus:outline-none focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF] transition-colors"

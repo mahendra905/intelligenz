@@ -21,12 +21,16 @@ interface AdminApplicationsTabProps {
   applications: JoinApplication[];
   onUpdateStatus: (id: string, status: string, notes?: string) => Promise<void>;
   onDeleteApplication: (id: string) => Promise<void>;
+  joinUsStatus?: boolean;
+  onToggleJoinUs?: () => Promise<void>;
 }
 
 export const AdminApplicationsTab: React.FC<AdminApplicationsTabProps> = ({
   applications,
   onUpdateStatus,
   onDeleteApplication,
+  joinUsStatus = true,
+  onToggleJoinUs,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -103,6 +107,24 @@ export const AdminApplicationsTab: React.FC<AdminApplicationsTabProps> = ({
             Review student candidates, check portfolio links, and manage interview approvals
           </p>
         </div>
+
+        {onToggleJoinUs && (
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0D1017] border border-[#1A1C23]">
+            <span className="text-xs font-semibold text-white pl-1">Join Us Status:</span>
+            <button
+              type="button"
+              id="admin-app-tab-join-us-toggle"
+              onClick={onToggleJoinUs}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-black tracking-wider uppercase transition-all duration-200 border cursor-pointer flex items-center gap-1.5 ${
+                joinUsStatus
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-[#0A0B0E] border-emerald-400 shadow-sm shadow-emerald-500/20'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-600/20'
+              }`}
+            >
+              <span>[ {joinUsStatus ? 'ON' : 'OFF'} ]</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -112,14 +134,14 @@ export const AdminApplicationsTab: React.FC<AdminApplicationsTabProps> = ({
           <input
             type="text"
             placeholder="Search by name, roll number, email, or branch..."
-            value={search}
+            value={search || ''}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white placeholder:text-[#4B5563] focus:outline-none focus:border-emerald-400"
           />
         </div>
 
         <select
-          value={statusFilter}
+          value={statusFilter || 'All'}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-emerald-400"
         >
@@ -334,7 +356,7 @@ export const AdminApplicationsTab: React.FC<AdminApplicationsTabProps> = ({
                 </label>
                 <textarea
                   rows={2}
-                  value={reviewerNotes}
+                  value={reviewerNotes || ''}
                   onChange={(e) => setReviewerNotes(e.target.value)}
                   placeholder="e.g. Interview scheduled for Friday at 4 PM in AI Lab..."
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"

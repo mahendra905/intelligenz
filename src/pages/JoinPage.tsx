@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { SiteSettings } from '../types';
 import {
   Sparkles,
   CheckCircle2,
@@ -18,9 +19,26 @@ import confetti from 'canvas-confetti';
 
 interface JoinPageProps {
   onNavigate: (path: string) => void;
+  settings?: SiteSettings;
 }
 
-export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
+export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate, settings: propSettings }) => {
+  const [localSettings, setLocalSettings] = useState<SiteSettings | undefined>(propSettings);
+
+  useEffect(() => {
+    if (propSettings) {
+      setLocalSettings(propSettings);
+    } else {
+      api.getSettings().then(setLocalSettings).catch(() => {});
+    }
+  }, [propSettings]);
+
+  const isJoinUsOpen = localSettings
+    ? (localSettings.join_us_status !== undefined
+        ? localSettings.join_us_status
+        : localSettings.is_recruitment_open !== false)
+    : true;
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -62,6 +80,11 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (honeypot) return; // bot detected
+
+    if (!isJoinUsOpen) {
+      setError("We're currently not accepting new club member applications.");
+      return;
+    }
 
     if (interestedDomains.length === 0) {
       setError('Please select at least one domain of interest.');
@@ -199,10 +222,39 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Right Column: Application Form */}
+        {/* Right Column: Application Form or Closed Message */}
         <div className="lg:col-span-7">
           <div className="p-6 sm:p-10 rounded-2xl bg-[#0D1017] border border-[#1A1C23] shadow-xl relative overflow-hidden">
-            {submitted ? (
+            {!isJoinUsOpen ? (
+              <div className="text-center py-12 sm:py-16 px-4 space-y-6">
+                <div className="inline-flex p-4 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-2">
+                  <AlertCircle className="w-12 h-12" />
+                </div>
+                <div className="space-y-3 max-w-lg mx-auto">
+                  <h3 className="text-2xl sm:text-3xl font-black text-white font-['Outfit']">
+                    We're currently not accepting new club member applications.
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#9CA3AF] leading-relaxed">
+                    Student membership recruitment is temporarily closed. Please stay tuned to our upcoming events and official club announcements for future recruitment rounds.
+                  </p>
+                </div>
+
+                <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => onNavigate('/announcements')}
+                    className="px-6 py-2.5 rounded-lg bg-[#00E5FF]/10 hover:bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/30 font-bold text-xs uppercase tracking-wider transition-colors"
+                  >
+                    View Announcements
+                  </button>
+                  <button
+                    onClick={() => onNavigate('/')}
+                    className="px-6 py-2.5 rounded-lg bg-[#1A1C23] hover:bg-[#252833] text-white font-semibold text-xs transition-colors"
+                  >
+                    Return to Homepage
+                  </button>
+                </div>
+              </div>
+            ) : submitted ? (
               <div className="text-center py-12 space-y-5">
                 <div className="inline-flex p-4 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
                   <CheckCircle2 className="w-14 h-14" />
@@ -261,7 +313,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                   <input
                     type="text"
                     name="website"
-                    value={honeypot}
+                    value={honeypot || ''}
                     onChange={(e) => setHoneypot(e.target.value)}
                     className="hidden"
                     tabIndex={-1}
@@ -278,7 +330,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         type="text"
                         required
                         placeholder="e.g. Rahul Sharma"
-                        value={fullName}
+                        value={fullName || ''}
                         onChange={(e) => setFullName(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />
@@ -292,7 +344,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         type="text"
                         required
                         placeholder="e.g. 238X1A05XX"
-                        value={rollNumber}
+                        value={rollNumber || ''}
                         onChange={(e) => setRollNumber(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs font-mono uppercase placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />
@@ -309,7 +361,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         type="email"
                         required
                         placeholder="student@drkvsrit.ac.in"
-                        value={email}
+                        value={email || ''}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />
@@ -323,7 +375,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         type="tel"
                         required
                         placeholder="+91 98765 43210"
-                        value={phone}
+                        value={phone || ''}
                         onChange={(e) => setPhone(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />
@@ -337,7 +389,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         Department *
                       </label>
                       <select
-                        value={department}
+                        value={department || 'CSE (AIML)'}
                         onChange={(e) => setDepartment(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                       >
@@ -357,7 +409,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                         Year of Study *
                       </label>
                       <select
-                        value={year}
+                        value={year || '1st Year'}
                         onChange={(e) => setYear(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                       >
@@ -404,7 +456,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                     <input
                       type="text"
                       placeholder="e.g. Python, OpenCV, Git, HTML/CSS"
-                      value={skills}
+                      value={skills || ''}
                       onChange={(e) => setSkills(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                     />
@@ -419,7 +471,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                       required
                       rows={3}
                       placeholder="Briefly tell us what you hope to build, learn, or contribute..."
-                      value={reason}
+                      value={reason || ''}
                       onChange={(e) => setReason(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors resize-none"
                     />
@@ -434,7 +486,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                       <input
                         type="url"
                         placeholder="https://github.com/yourhandle"
-                        value={githubUrl}
+                        value={githubUrl || ''}
                         onChange={(e) => setGithubUrl(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />
@@ -447,7 +499,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate }) => {
                       <input
                         type="url"
                         placeholder="https://linkedin.com/in/yourhandle"
-                        value={linkedinUrl}
+                        value={linkedinUrl || ''}
                         onChange={(e) => setLinkedinUrl(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                       />

@@ -141,14 +141,14 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
           <input
             type="text"
             placeholder="Search projects by name, stack or description..."
-            value={search}
+            value={search || ''}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#00E5FF]"
           />
         </div>
 
         <select
-          value={categoryFilter}
+          value={categoryFilter || 'All'}
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="px-3 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
         >
@@ -321,7 +321,7 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={techInput}
+                  value={techInput || ''}
                   onChange={(e) => setTechInput(e.target.value)}
                   placeholder="e.g. PyTorch, YOLOv9, OpenCV, FastAPI, React"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"

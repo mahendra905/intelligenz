@@ -1,6 +1,6 @@
 {
   "name": "Intelligenz Club | DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-  "description": "Official website of Intelligenz Club, Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology. Explore events, workshops, projects, announcements, achievements and join the club.",
+  "description": "Official website of Intelligenz Club, Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology. Explore events, workshops, projects, announcements, and join the club.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

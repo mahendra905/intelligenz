@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   Terminal,
   Award,
-  BookOpen,
   Search,
 } from 'lucide-react';
 
@@ -80,9 +79,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 3. Live Club Information Section */}
       <StatsSection stats={stats} />
 
-      {/* 3.5 Quick Hub Highlights: AI Learning, Certificates, Innovation */}
+      {/* 3.5 Quick Hub Highlights: Certificates, Innovation */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Feature 1: Certificates */}
           <div
             onClick={() => onNavigate('/certificates')}
@@ -105,29 +104,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </div>
 
-          {/* Feature 2: Learning Hub */}
-          <div
-            onClick={() => onNavigate('/resources')}
-            className="p-6 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950 border border-slate-800 hover:border-emerald-500/50 transition-all cursor-pointer group shadow-lg hover:shadow-emerald-500/10 flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors font-['Outfit']">
-                AI Learning & Roadmap Hub
-              </h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Curated PyTorch, Generative AI, Kaggle notebooks, research cheat sheets, and hackathon playbooks.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-emerald-400 font-semibold uppercase tracking-wider">
-              <span>Explore Materials</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Feature 3: AI Projects & Innovation */}
+          {/* Feature 2: AI Projects & Innovation */}
           <div
             onClick={() => onNavigate('/projects')}
             className="p-6 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950 border border-slate-800 hover:border-purple-500/50 transition-all cursor-pointer group shadow-lg hover:shadow-purple-500/10 flex flex-col justify-between"

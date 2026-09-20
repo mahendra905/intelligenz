@@ -9,7 +9,6 @@ import {
   ContactMessage,
   Project,
   TeamMember,
-  Achievement,
   GalleryImage,
   SiteStats,
   SiteSettings,
@@ -20,7 +19,6 @@ import {
   Bell,
   Users,
   Code2,
-  Trophy,
   Image as ImageIcon,
   FileText,
   Mail,
@@ -40,7 +38,6 @@ import {
   AlertTriangle,
   Award,
   QrCode,
-  BookOpen,
 } from 'lucide-react';
 
 // Subcomponents
@@ -50,7 +47,6 @@ import { AdminEventsTab } from '../components/admin/AdminEventsTab';
 import { AdminAnnouncementsTab } from '../components/admin/AdminAnnouncementsTab';
 import { AdminProjectsTab } from '../components/admin/AdminProjectsTab';
 import { AdminTeamTab } from '../components/admin/AdminTeamTab';
-import { AdminAchievementsTab } from '../components/admin/AdminAchievementsTab';
 import { AdminGalleryTab } from '../components/admin/AdminGalleryTab';
 import { AdminApplicationsTab } from '../components/admin/AdminApplicationsTab';
 import { AdminRegistrationsTab } from '../components/admin/AdminRegistrationsTab';
@@ -63,7 +59,6 @@ import { AdminSqlTab } from '../components/admin/AdminSqlTab';
 import { AdminCertificatesTab } from '../components/admin/AdminCertificatesTab';
 import { AdminAttendanceTab } from '../components/admin/AdminAttendanceTab';
 import { AdminNewsletterTab } from '../components/admin/AdminNewsletterTab';
-import { AdminResourcesTab } from '../components/admin/AdminResourcesTab';
 import { SessionWarningModal } from '../components/SessionWarningModal';
 import { useAdminSession } from '../lib/adminSession';
 import { authStorage } from '../lib/api';
@@ -81,10 +76,8 @@ export type AdminTab =
   | 'certificates'
   | 'attendance'
   | 'newsletter'
-  | 'resources'
   | 'projects'
   | 'team'
-  | 'achievements'
   | 'gallery'
   | 'applications'
   | 'registrations'
@@ -125,7 +118,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [applications, setApplications] = useState<JoinApplication[]>([]);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -151,7 +143,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         annRes,
         projRes,
         teamRes,
-        achRes,
         galRes,
         appRes,
         regRes,
@@ -166,7 +157,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         api.getAnnouncements().catch((err) => { console.warn('Could not load announcements:', err); return []; }),
         api.getProjects().catch((err) => { console.warn('Could not load projects:', err); return []; }),
         api.getTeam().catch((err) => { console.warn('Could not load team:', err); return []; }),
-        api.getAchievements().catch((err) => { console.warn('Could not load achievements:', err); return []; }),
         api.getGallery().catch((err) => { console.warn('Could not load gallery:', err); return []; }),
         api.getApplications().catch((err) => { console.warn('Could not load applications:', err); return []; }),
         api.getRegistrations().catch((err) => { console.warn('Could not load registrations:', err); return []; }),
@@ -184,7 +174,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       setAnnouncements(annRes || []);
       setProjects(projRes || []);
       setTeam(teamRes || []);
-      setAchievements(achRes || []);
       setGallery(galRes || []);
       setApplications(appRes || []);
       setRegistrations(regRes || []);
@@ -363,36 +352,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
   };
 
-  // Achievement Handlers
-  const handleSaveAchievement = async (achData: Partial<Achievement>) => {
-    try {
-      if (achData.id) {
-        await api.updateAchievement(achData.id, achData);
-        showFeedback('Achievement updated');
-      } else {
-        await api.createAchievement(achData);
-        showFeedback('Achievement recorded');
-      }
-      await loadAllData();
-      if (onRefreshData) onRefreshData();
-    } catch (err: any) {
-      showFeedback(err.message || 'Failed to save achievement', 'error');
-      throw err;
-    }
-  };
-
-  const handleDeleteAchievement = async (id: string) => {
-    try {
-      await api.deleteAchievement(id);
-      showFeedback('Achievement deleted');
-      await loadAllData();
-      if (onRefreshData) onRefreshData();
-    } catch (err: any) {
-      showFeedback(err.message || 'Failed to delete achievement', 'error');
-      throw err;
-    }
-  };
-
   // Gallery Handlers
   const handleSaveGalleryItem = async (data: Partial<GalleryImage>) => {
     try {
@@ -516,6 +475,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
   };
 
+  const handleToggleJoinUs = async () => {
+    try {
+      const current = settings?.join_us_status !== undefined
+        ? settings.join_us_status
+        : (settings?.is_recruitment_open ?? true);
+      const nextStatus = !current;
+      const updated = {
+        ...settings,
+        is_recruitment_open: nextStatus,
+        join_us_status: nextStatus,
+      };
+      await api.updateSettings(updated);
+      setSettings((prev) => prev ? { ...prev, is_recruitment_open: nextStatus, join_us_status: nextStatus } : (updated as any));
+      showFeedback(`Join Us Applications set to ${nextStatus ? 'ON' : 'OFF'}`);
+      await loadAllData();
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      showFeedback(err.message || 'Failed to update Join Us Status', 'error');
+    }
+  };
+
   const isSuperAdmin = currentAdminRole === 'SUPER_ADMIN';
 
   const navItems: { id: AdminTab; label: string; icon: any; count?: number; badgeColor?: string }[] = [
@@ -525,10 +505,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     { id: 'certificates', label: 'Certificates & Credentials', icon: Award },
     { id: 'attendance', label: 'QR Attendance & Check-In', icon: QrCode },
     { id: 'newsletter', label: 'Newsletter & Broadcasts', icon: Mail },
-    { id: 'resources', label: 'Learning Resources', icon: BookOpen },
     { id: 'projects', label: 'AI Projects', icon: Code2, count: projects.length },
     { id: 'team', label: 'Core Team & Faculty', icon: Users, count: team.length },
-    { id: 'achievements', label: 'Achievements', icon: Trophy, count: achievements.length },
     { id: 'gallery', label: 'Photo Gallery', icon: ImageIcon, count: gallery.length },
     {
       id: 'applications',
@@ -825,10 +803,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           <AdminNewsletterTab onRefreshData={handleManualRefresh} />
         )}
 
-        {activeTab === 'resources' && (
-          <AdminResourcesTab onRefreshData={handleManualRefresh} />
-        )}
-
         {activeTab === 'projects' && (
           <AdminProjectsTab
             projects={projects}
@@ -845,14 +819,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           />
         )}
 
-        {activeTab === 'achievements' && (
-          <AdminAchievementsTab
-            achievements={achievements}
-            onSaveAchievement={handleSaveAchievement}
-            onDeleteAchievement={handleDeleteAchievement}
-          />
-        )}
-
         {activeTab === 'gallery' && (
           <AdminGalleryTab
             gallery={gallery}
@@ -866,6 +832,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             applications={applications}
             onUpdateStatus={handleUpdateApplicationStatus}
             onDeleteApplication={handleDeleteApplication}
+            joinUsStatus={settings?.join_us_status !== undefined ? settings.join_us_status : (settings?.is_recruitment_open ?? true)}
+            onToggleJoinUs={handleToggleJoinUs}
           />
         )}
 

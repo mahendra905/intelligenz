@@ -6,6 +6,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import express, { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -16,18 +19,15 @@ import {
   INITIAL_ANNOUNCEMENTS,
   INITIAL_TEAM,
   INITIAL_PROJECTS,
-  INITIAL_ACHIEVEMENTS,
   INITIAL_GALLERY,
   INITIAL_CERTIFICATES,
   INITIAL_SUBSCRIBERS,
-  INITIAL_RESOURCES,
 } from './src/data/initialData';
 import {
   Event,
   Announcement,
   TeamMember,
   Project,
-  Achievement,
   GalleryImage,
   JoinApplication,
   EventRegistration,
@@ -39,7 +39,6 @@ import {
   NewsletterSubscriber,
   NewsletterBroadcast,
   AttendanceRecord,
-  LearningResource,
   AuditLog,
   ParticipationType,
   TeamMemberRegistration,
@@ -82,7 +81,6 @@ interface DatabaseSchema {
   announcements: Announcement[];
   team: TeamMember[];
   projects: Project[];
-  achievements: Achievement[];
   gallery: GalleryImage[];
   join_applications: JoinApplication[];
   registrations: EventRegistration[];
@@ -91,7 +89,6 @@ interface DatabaseSchema {
   certificates: Certificate[];
   newsletter_subscribers: NewsletterSubscriber[];
   newsletter_broadcasts: NewsletterBroadcast[];
-  resources: LearningResource[];
   checkins: AttendanceRecord[];
   audit_logs: AuditLog[];
 }
@@ -279,7 +276,6 @@ function loadDatabase(): DatabaseSchema {
         announcements: parsed.announcements || INITIAL_ANNOUNCEMENTS,
         team: parsed.team || INITIAL_TEAM,
         projects: parsed.projects || INITIAL_PROJECTS,
-        achievements: parsed.achievements || INITIAL_ACHIEVEMENTS,
         gallery: parsed.gallery || INITIAL_GALLERY,
         join_applications: parsed.join_applications || [],
         registrations: (parsed.registrations || []).map((r: any) => {
@@ -288,6 +284,13 @@ function loadDatabase(): DatabaseSchema {
           const qrPayload = r.qr_payload || `ATTENDANCE:${qrToken}`;
           return {
             ...r,
+            roll_number: (r.roll_number || '').trim().toUpperCase(),
+            team_members: Array.isArray(r.team_members)
+              ? r.team_members.map((m: any) => ({
+                  ...m,
+                  roll_number: (m.roll_number || '').trim().toUpperCase(),
+                }))
+              : r.team_members,
             ticket_code: ticketCode,
             qr_token: qrToken,
             qr_payload: qrPayload,
@@ -298,7 +301,6 @@ function loadDatabase(): DatabaseSchema {
         certificates: parsed.certificates || INITIAL_CERTIFICATES,
         newsletter_subscribers: parsed.newsletter_subscribers || INITIAL_SUBSCRIBERS,
         newsletter_broadcasts: parsed.newsletter_broadcasts || [],
-        resources: parsed.resources || INITIAL_RESOURCES,
         checkins: parsed.checkins || [],
         audit_logs: Array.isArray(parsed.audit_logs) ? parsed.audit_logs : [],
       };
@@ -321,7 +323,6 @@ function loadDatabase(): DatabaseSchema {
     announcements: INITIAL_ANNOUNCEMENTS,
     team: INITIAL_TEAM,
     projects: INITIAL_PROJECTS,
-    achievements: INITIAL_ACHIEVEMENTS,
     gallery: INITIAL_GALLERY,
     join_applications: [],
     registrations: [],
@@ -330,7 +331,6 @@ function loadDatabase(): DatabaseSchema {
     certificates: INITIAL_CERTIFICATES,
     newsletter_subscribers: INITIAL_SUBSCRIBERS,
     newsletter_broadcasts: [],
-    resources: INITIAL_RESOURCES,
     checkins: [],
     audit_logs: [
       {
@@ -385,6 +385,436 @@ function logAdminAction(
   } catch (err) {
     console.error('Failed to write audit log:', err);
   }
+}
+
+// ============================================================================
+// AUTOMATED EVENT-PASS EMAIL SYSTEM (BACKEND & SECURE CREDENTIALS)
+// ============================================================================
+const sentPassEmailRegistrations = new Set<string>();
+
+function getEmailTransporter() {
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (host && user) {
+    return {
+      transporter: nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+      }),
+      isLiveSmtp: true,
+      providerInfo: `Live SMTP (${host}:${port})`,
+    };
+  }
+
+  // Resilient fallback transporter for dev/preview environments without active credentials
+  return {
+    transporter: nodemailer.createTransport({
+      streamTransport: true,
+      newline: 'windows',
+    }),
+    isLiveSmtp: false,
+    providerInfo: 'Dev/Local Stream Transport (configure SMTP_HOST & SMTP_USER in .env for live outbound email)',
+  };
+}
+
+async function generateEventPassPdf(
+  event: Event,
+  reg: EventRegistration,
+  settings: SiteSettings
+): Promise<Buffer> {
+  const qrPayload =
+    reg.qr_payload || (reg.qr_token ? `ATTENDANCE:${reg.qr_token}` : `ATTENDANCE:${reg.id}`);
+  const qrBuffer = await QRCode.toBuffer(qrPayload, {
+    width: 260,
+    margin: 1,
+    color: { dark: '#000000', light: '#FFFFFF' },
+    errorCorrectionLevel: 'H',
+  });
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const buffers: Buffer[] = [];
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const ticketCode = reg.ticket_code || `TKT-${reg.id.slice(-6).toUpperCase()}`;
+    const displayRoll = (reg.roll_number || '').trim().toUpperCase();
+    const clubName = settings.club_name || 'INTELLIGENZ CLUB';
+    const collegeName =
+      settings.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY';
+    const deptName = settings.department_name || 'Department of CSE (AIML) & AI';
+
+    const cardX = 55;
+    const cardY = 45;
+    const cardW = 485;
+    const cardH = 690;
+
+    // Outer card container
+    doc.roundedRect(cardX, cardY, cardW, cardH, 12).lineWidth(1.5).strokeColor('#1A1C23').stroke();
+    doc.roundedRect(cardX, cardY, cardW, 100, 12).fillColor('#0D1017').fill();
+    doc.rect(cardX, cardY + 80, cardW, 20).fillColor('#0D1017').fill();
+
+    // Club branding
+    doc
+      .fillColor('#00E5FF')
+      .font('Helvetica-Bold')
+      .fontSize(18)
+      .text(clubName, cardX, cardY + 18, { align: 'center', width: cardW });
+    doc
+      .fillColor('#9CA3AF')
+      .font('Helvetica')
+      .fontSize(9)
+      .text(collegeName, cardX, cardY + 42, { align: 'center', width: cardW });
+    doc
+      .fillColor('#00E5FF')
+      .font('Helvetica-Bold')
+      .fontSize(8.5)
+      .text(deptName, cardX, cardY + 56, { align: 'center', width: cardW });
+
+    // Ticket Code Badge
+    const badgeW = 160;
+    const badgeH = 22;
+    const badgeX = cardX + (cardW - badgeW) / 2;
+    const badgeY = cardY + 74;
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 4).fillColor('#000000').fill();
+    doc
+      .fillColor('#00E5FF')
+      .font('Courier-Bold')
+      .fontSize(11)
+      .text(ticketCode, badgeX, badgeY + 6, { align: 'center', width: badgeW });
+
+    // Event Title
+    doc
+      .fillColor('#111827')
+      .font('Helvetica-Bold')
+      .fontSize(15)
+      .text(event.title, cardX + 24, cardY + 116, { align: 'center', width: cardW - 48 });
+
+    // Event Date, Time, Venue
+    const metaText = `${event.date} • ${event.start_time || 'TBA'}${
+      event.end_time ? ` - ${event.end_time}` : ''
+    }\nVenue: ${event.venue || 'Campus Auditorium & AI Lab'}`;
+    doc
+      .fillColor('#4B5563')
+      .font('Helvetica')
+      .fontSize(10)
+      .text(metaText, cardX + 24, cardY + 152, { align: 'center', width: cardW - 48, lineGap: 3 });
+
+    // Divider line
+    doc
+      .moveTo(cardX + 24, cardY + 195)
+      .lineTo(cardX + cardW - 24, cardY + 195)
+      .lineWidth(1)
+      .dash(4, { space: 4 })
+      .strokeColor('#D1D5DB')
+      .stroke()
+      .undash();
+
+    // QR Code Frame
+    const qrSize = 160;
+    const qrX = cardX + (cardW - qrSize) / 2;
+    const qrY = cardY + 208;
+    doc
+      .roundedRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 8)
+      .lineWidth(1)
+      .strokeColor('#E5E7EB')
+      .fillColor('#FFFFFF')
+      .fillAndStroke();
+    doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+
+    // Details Box
+    const boxY = cardY + 400;
+    const boxX = cardX + 24;
+    const boxW = cardW - 48;
+    doc
+      .roundedRect(boxX, boxY, boxW, 160, 6)
+      .lineWidth(1)
+      .strokeColor('#E5E7EB')
+      .fillColor('#F9FAFB')
+      .fillAndStroke();
+
+    const participantStr =
+      reg.participation_type !== 'SOLO' && reg.team_name
+        ? `${reg.full_name} (Team: ${reg.team_name})`
+        : reg.full_name;
+
+    const rows = [
+      ['Participant:', participantStr],
+      ['Roll Number:', displayRoll],
+      ['Department:', `${reg.department} (${reg.year})`],
+      ['Pass Status:', `${reg.status} (Eligible for Check-In)`],
+      ['Registration ID:', reg.id],
+    ];
+
+    let rowY = boxY + 12;
+    for (const [label, val] of rows) {
+      doc.fillColor('#6B7280').font('Helvetica-Bold').fontSize(9.5).text(label, boxX + 16, rowY, { width: 120 });
+      const valColor =
+        label === 'Pass Status:' ? '#059669' : label === 'Roll Number:' ? '#0284C7' : '#111827';
+      const valFont =
+        label === 'Roll Number:' || label === 'Registration ID:' ? 'Courier-Bold' : 'Helvetica-Bold';
+      doc
+        .fillColor(valColor)
+        .font(valFont)
+        .fontSize(label === 'Roll Number:' ? 10.5 : 9.5)
+        .text(val, boxX + 140, rowY, { width: boxW - 156 });
+      rowY += 28;
+    }
+
+    // Check-in instructions
+    doc
+      .fillColor('#059669')
+      .font('Helvetica-Bold')
+      .fontSize(10.5)
+      .text('✓ Scan at event entrance for instant automated check-in', cardX, cardY + 586, {
+        align: 'center',
+        width: cardW,
+      });
+    doc
+      .fillColor('#9CA3AF')
+      .font('Helvetica')
+      .fontSize(8.5)
+      .text(
+        'Please carry this pass digitally or printed. Roll number must match your college ID card.',
+        cardX,
+        cardY + 606,
+        { align: 'center', width: cardW }
+      );
+
+    // Bottom branding
+    doc
+      .fillColor('#6B7280')
+      .font('Helvetica')
+      .fontSize(8)
+      .text(`Issued by ${clubName} • ${deptName}`, cardX, cardY + 645, {
+        align: 'center',
+        width: cardW,
+      });
+
+    doc.end();
+  });
+}
+
+async function sendEventPassEmail(
+  event: Event,
+  reg: EventRegistration,
+  settings: SiteSettings,
+  targetEmailOverride?: string
+): Promise<{ success: boolean; messageId?: string; simulated?: boolean; error?: string }> {
+  const recipient = (targetEmailOverride || reg.email || '').trim();
+  if (!recipient || !recipient.includes('@')) {
+    return { success: false, error: 'Valid recipient email address is required.' };
+  }
+
+  // Duplicate email prevention for the registration
+  const regKey = `${reg.id}_pass_email`;
+  if (!targetEmailOverride && (sentPassEmailRegistrations.has(regKey) || reg.email_status === 'sent')) {
+    console.log(`[Email] Pass email already dispatched for registration ${reg.id}. Skipping duplicate send.`);
+    return { success: true, messageId: 'already_sent' };
+  }
+
+  const { transporter, isLiveSmtp, providerInfo } = getEmailTransporter();
+  const ticketCode = reg.ticket_code || `TKT-${reg.id.slice(-6).toUpperCase()}`;
+  const qrPayload =
+    reg.qr_payload || (reg.qr_token ? `ATTENDANCE:${reg.qr_token}` : `ATTENDANCE:${reg.id}`);
+  const displayRoll = (reg.roll_number || '').trim().toUpperCase();
+
+  const qrPngBuffer = await QRCode.toBuffer(qrPayload, {
+    width: 280,
+    margin: 1,
+    color: { dark: '#000000', light: '#FFFFFF' },
+    errorCorrectionLevel: 'H',
+  });
+
+  const pdfBuffer = await generateEventPassPdf(event, reg, settings);
+
+  const clubName = settings.club_name || 'IntelliGenZ Club';
+  const deptName = settings.department_name || 'Department of CSE (AIML) & AI';
+  const collegeName =
+    settings.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY';
+  const senderName = settings.email_sender_name || 'IntelliGenZ Club';
+  const senderEmail =
+    settings.email_sender_address || process.env.SMTP_FROM || 'intelligenz@drkvsrit.ac.in';
+  const fromAddress = `"${senderName}" <${senderEmail}>`;
+
+  const subject = `Your Event Pass — ${event.title} | IntelliGenZ Club`;
+
+  const participantName = reg.full_name || reg.participant_name || 'Participant';
+  const eventDate = event.date || 'TBA';
+  const eventTime = `${event.start_time || ''}${
+    event.end_time ? ` - ${event.end_time}` : ''
+  }`.trim() || 'Refer to schedule';
+  const eventVenue = event.venue || 'Campus Auditorium & AI Lab';
+
+  // Plain-text body exactly adhering to the required structure
+  const textBody = `Hello ${participantName},
+
+Your registration for ${event.title} has been successfully completed.
+
+Your Event Pass is attached to this email.
+
+Event: ${event.title}
+Date: ${eventDate}
+Time: ${eventTime}
+Venue: ${eventVenue}
+Registration ID: ${reg.id}
+Ticket Code: ${ticketCode}
+Roll Number: ${displayRoll}
+
+Please keep this Event Pass safely and present it when required at the event.
+
+Regards,
+IntelliGenZ Club
+${deptName}
+${collegeName}`;
+
+  // Rich HTML body
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Event Pass — ${event.title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0A0B0E; color: #E5E7EB; margin: 0; padding: 20px; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #0D1017; border: 1px solid #1A1C23; border-radius: 16px; overflow: hidden; }
+    .header { background-color: #05070A; border-bottom: 2px solid #00E5FF; padding: 24px; text-align: center; }
+    .club-title { color: #00E5FF; font-size: 22px; font-weight: 800; letter-spacing: 1px; margin: 0; }
+    .club-subtitle { color: #9CA3AF; font-size: 11px; text-transform: uppercase; margin-top: 4px; }
+    .body-content { padding: 26px 22px; }
+    .greeting { font-size: 17px; font-weight: 700; color: #FFFFFF; margin-bottom: 12px; }
+    .lead { font-size: 14px; color: #D1D5DB; line-height: 1.6; margin-bottom: 20px; }
+    .pass-card { background: #11141D; border: 1px solid #1F2430; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .ticket-badge { display: inline-block; background: #000000; color: #00E5FF; font-family: monospace; font-size: 13px; font-weight: bold; padding: 5px 16px; border-radius: 6px; border: 1px solid #00E5FF; letter-spacing: 1px; }
+    .event-title { font-size: 17px; font-weight: 800; color: #FFFFFF; margin: 14px 0 6px; }
+    .event-meta { font-size: 12px; color: #9CA3AF; margin-bottom: 16px; line-height: 1.5; }
+    .qr-box { background: #FFFFFF; padding: 12px; border-radius: 8px; display: inline-block; margin: 10px auto; }
+    .qr-img { width: 170px; height: 170px; display: block; }
+    .info-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; margin-top: 16px; }
+    .info-table td { padding: 7px 10px; border-bottom: 1px solid #1A1C23; }
+    .info-table td.lbl { color: #9CA3AF; width: 38%; font-weight: 600; }
+    .info-table td.val { color: #FFFFFF; font-weight: 700; }
+    .info-table td.val.roll { color: #00E5FF; font-family: monospace; letter-spacing: 0.5px; }
+    .info-table td.val.status { color: #10B981; }
+    .pass-footer { font-size: 11px; color: #10B981; font-weight: 700; margin-top: 14px; padding-top: 10px; border-top: 1px dashed #2A2E39; }
+    .notice-box { background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #9CA3AF; line-height: 1.5; margin: 20px 0; }
+    .footer { border-top: 1px solid #1A1C23; padding: 20px 24px; text-align: center; font-size: 11px; color: #6B7280; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="club-title">${clubName}</h1>
+      <div class="club-subtitle">${deptName} • ${collegeName}</div>
+    </div>
+    <div class="body-content">
+      <div class="greeting">Hello ${participantName},</div>
+      <p class="lead">
+        Your registration for <strong>${event.title}</strong> has been successfully completed.<br/><br/>
+        <strong>Your official Event Pass is attached to this email as a PDF document (event-pass-${ticketCode}.pdf).</strong>
+      </p>
+
+      <div class="pass-card">
+        <div class="ticket-badge">${ticketCode}</div>
+        <div class="event-title">${event.title}</div>
+        <div class="event-meta">
+          📅 ${eventDate} &nbsp;•&nbsp; ⏰ ${eventTime}<br/>
+          📍 ${eventVenue}
+        </div>
+        <div class="qr-box">
+          <img class="qr-img" src="cid:event-pass-qr-image" alt="Verification QR Code" />
+        </div>
+        <table class="info-table">
+          <tr>
+            <td class="lbl">Participant</td>
+            <td class="val">${participantName} ${
+              reg.participation_type !== 'SOLO' && reg.team_name ? `(Team: ${reg.team_name})` : ''
+            }</td>
+          </tr>
+          <tr>
+            <td class="lbl">Roll Number</td>
+            <td class="val roll">${displayRoll}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Department</td>
+            <td class="val">${reg.department} (${reg.year})</td>
+          </tr>
+          <tr>
+            <td class="lbl">Registration ID</td>
+            <td class="val" style="font-family: monospace; font-size: 11px;">${reg.id}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Attendance Status</td>
+            <td class="val status">Confirmed (Eligible for Check-In)</td>
+          </tr>
+        </table>
+        <div class="pass-footer">
+          ✓ Scan at event entrance for instant automated check-in
+        </div>
+      </div>
+
+      <div class="notice-box">
+        <strong>Important Instructions:</strong>
+        <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+          <li>Please carry this Event Pass either digitally on your phone or printed.</li>
+          <li>Ensure your Roll Number (<span style="color:#00E5FF;font-family:monospace;font-weight:bold;">${displayRoll}</span>) matches your college ID card.</li>
+          <li>Your QR pass is unique to your registration and valid for entrance verification.</li>
+        </ul>
+      </div>
+
+      <p style="font-size: 13px; color: #9CA3AF; margin-top: 24px; line-height: 1.5;">
+        Please keep this Event Pass safely and present it when required at the event.<br/><br/>
+        Regards,<br/>
+        <strong style="color: #FFFFFF;">IntelliGenZ Club</strong><br/>
+        ${deptName}<br/>
+        ${collegeName}
+      </p>
+    </div>
+    <div class="footer">
+      This is an automated transactional confirmation message for your event registration.<br/>
+      IntelliGenZ Club • DR. K. V. Subba Reddy Institute of Technology, Kurnool.
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const info = await transporter.sendMail({
+    from: fromAddress,
+    to: recipient,
+    subject: subject,
+    text: textBody,
+    html: htmlBody,
+    attachments: [
+      {
+        filename: `event-pass-${ticketCode}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+      {
+        filename: `event-pass-qr-${ticketCode}.png`,
+        content: qrPngBuffer,
+        cid: 'event-pass-qr-image',
+        contentType: 'image/png',
+      },
+    ],
+  });
+
+  if (!targetEmailOverride) {
+    sentPassEmailRegistrations.add(regKey);
+  }
+
+  console.log(
+    `[Email Service] Automated Event Pass successfully dispatched to: ${recipient} (id: ${info.messageId || 'ok'}) [${providerInfo}]`
+  );
+  return { success: true, messageId: info.messageId, simulated: !isLiveSmtp };
 }
 
 // In-memory rate limiting map
@@ -620,6 +1050,21 @@ async function startServer() {
   // Serve persistent uploaded images statically BEFORE Vite and SPA fallback
   app.use('/uploads', express.static(UPLOADS_DIR));
   app.use('/api/uploads', express.static(UPLOADS_DIR));
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
+  // Direct route for club logo asset supporting standard file names
+  app.get(['/club-logo.jpeg', '/club%20logo.jpeg', '/club logo.jpeg'], (req, res, next) => {
+    const publicPath1 = path.join(process.cwd(), 'public', 'club-logo.jpeg');
+    const publicPath2 = path.join(process.cwd(), 'public', 'club logo.jpeg');
+    const uploadPath1 = path.join(UPLOADS_DIR, 'club-logo.jpeg');
+    const uploadPath2 = path.join(UPLOADS_DIR, 'club logo.jpeg');
+
+    if (fs.existsSync(publicPath1)) return res.sendFile(publicPath1);
+    if (fs.existsSync(publicPath2)) return res.sendFile(publicPath2);
+    if (fs.existsSync(uploadPath1)) return res.sendFile(uploadPath1);
+    if (fs.existsSync(uploadPath2)) return res.sendFile(uploadPath2);
+    next();
+  });
 
   // Request logger for API calls
   app.use((req, res, next) => {
@@ -1026,15 +1471,52 @@ async function startServer() {
     event.current_participants = (event.current_participants || 0) + totalParticipants;
     saveDatabase(db);
 
+    // ========================================================================
+    // AUTOMATED EVENT-PASS EMAIL FEATURE
+    // Automatically sends the exact same generated pass to the registrant's email.
+    // Failure to send must NEVER cancel or invalidate the successful registration.
+    // ========================================================================
+    const isEmailAutoEnabled = db.settings.automated_email_enabled !== false;
+    let emailSent = false;
+    let emailStatus: 'sent' | 'failed' | 'disabled' = isEmailAutoEnabled ? 'failed' : 'disabled';
+
+    if (isEmailAutoEnabled && regStatus === 'Confirmed') {
+      try {
+        const mailResult = await sendEventPassEmail(event, newReg, db.settings);
+        if (mailResult.success) {
+          emailSent = true;
+          emailStatus = 'sent';
+          newReg.email_status = 'sent';
+          newReg.email_sent_at = new Date().toISOString();
+        } else {
+          newReg.email_status = 'failed';
+          newReg.email_error = mailResult.error;
+        }
+        saveDatabase(db);
+      } catch (mailErr: any) {
+        console.error('[Automated Email Dispatch Error]', mailErr.message);
+        newReg.email_status = 'failed';
+        newReg.email_error = mailErr.message;
+        saveDatabase(db);
+      }
+    } else if (!isEmailAutoEnabled) {
+      newReg.email_status = 'disabled';
+      saveDatabase(db);
+    }
+
     res.status(201).json({
       success: true,
-      message: `Registration successful! ${
-        participationType !== 'SOLO' ? `Team '${teamName}' registered` : `Registered`
-      } with status: ${regStatus}.`,
+      message: emailSent
+        ? `Registration successful! Your event pass has been sent to your registered email address.`
+        : `Registration successful! ${
+            participationType !== 'SOLO' ? `Team '${teamName}' registered` : `Registered`
+          } with status: ${regStatus}.`,
       registration: newReg,
       ticket_code: newReg.ticket_code,
       qr_token: newReg.qr_token,
       qr_payload: newReg.qr_payload,
+      email_sent: emailSent,
+      email_status: emailStatus,
     });
   });
 
@@ -1080,14 +1562,6 @@ async function startServer() {
     res.json(result);
   });
 
-  // ACHIEVEMENTS
-  app.get('/api/achievements', (req, res) => {
-    const sorted = [...db.achievements].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    res.json(sorted);
-  });
-
   // GALLERY
   app.get('/api/gallery', (req, res) => {
     const album = req.query.album as string;
@@ -1099,7 +1573,21 @@ async function startServer() {
   });
 
   // JOIN US SUBMISSION (Public)
-  app.post('/api/join', rateLimiter(20, 60000), (req, res) => {
+  const handleJoinSubmission = (req: express.Request, res: express.Response) => {
+    // Backend enforcement: reject submissions if Join Us Status is OFF
+    const isJoinUsOpen = db.settings
+      ? (db.settings.join_us_status !== undefined
+          ? db.settings.join_us_status
+          : db.settings.is_recruitment_open !== false)
+      : true;
+
+    if (!isJoinUsOpen) {
+      res.status(403).json({
+        error: "We're currently not accepting new club member applications.",
+      });
+      return;
+    }
+
     const {
       full_name,
       name,
@@ -1181,7 +1669,10 @@ async function startServer() {
       application_id: newApp.id,
       application: newApp,
     });
-  });
+  };
+
+  app.post('/api/join', rateLimiter(20, 60000), handleJoinSubmission);
+  app.post('/api/join-applications', rateLimiter(20, 60000), handleJoinSubmission);
 
   // CONTACT MESSAGE (Public)
   app.post('/api/contact', rateLimiter(10, 60000), (req, res) => {
@@ -1358,19 +1849,6 @@ async function startServer() {
       verification_time: new Date().toISOString(),
       verified_by: 'Department of CSE (AIML) & AI, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
     });
-  });
-
-
-  // ==========================================
-  // LEARNING RESOURCES & AI ROADMAPS (Public)
-  // ==========================================
-  app.get('/api/resources', (req, res) => {
-    const category = req.query.category as string;
-    let list = [...db.resources];
-    if (category && category !== 'All') {
-      list = list.filter((r) => r.category === category);
-    }
-    res.json(list);
   });
 
   // ==========================================
@@ -2079,7 +2557,6 @@ async function startServer() {
       total_registrations: db.registrations.length,
       total_projects: db.projects.length,
       total_team: db.team.length,
-      total_achievements: db.achievements.length,
       total_gallery: db.gallery.length,
       total_admins: db.admin_users.length,
       unread_messages: db.messages.filter((m) => !m.is_read).length,
@@ -2477,34 +2954,6 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Admin Achievements Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.post('/achievements', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const newAch: Achievement = {
-      ...req.body,
-      id: `ach-${Date.now()}`,
-    };
-    db.achievements.unshift(newAch);
-    saveDatabase(db);
-    res.status(201).json(newAch);
-  });
-
-  adminRouter.put('/achievements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.achievements.findIndex((a) => a.id === req.params.id);
-    if (index === -1) {
-      res.status(404).json({ error: 'Achievement not found' });
-      return;
-    }
-    db.achievements[index] = { ...db.achievements[index], ...req.body };
-    saveDatabase(db);
-    res.json(db.achievements[index]);
-  });
-
-  adminRouter.delete('/achievements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    db.achievements = db.achievements.filter((a) => a.id !== req.params.id);
-    saveDatabase(db);
-    res.json({ success: true });
-  });
-
   // Admin Gallery Management (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.post('/gallery', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
     const newGal: GalleryImage = {
@@ -2725,8 +3174,16 @@ async function startServer() {
     res.json(db.stats);
   });
 
-  adminRouter.put('/settings', requireRole('SUPER_ADMIN'), (req, res) => {
-    db.settings = { ...db.settings, ...req.body };
+  adminRouter.put('/settings', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+    const updatedSettings = { ...db.settings, ...req.body };
+    if (req.body.join_us_status !== undefined) {
+      updatedSettings.is_recruitment_open = !!req.body.join_us_status;
+      updatedSettings.join_us_status = !!req.body.join_us_status;
+    } else if (req.body.is_recruitment_open !== undefined) {
+      updatedSettings.is_recruitment_open = !!req.body.is_recruitment_open;
+      updatedSettings.join_us_status = !!req.body.is_recruitment_open;
+    }
+    db.settings = updatedSettings;
     saveDatabase(db);
     res.json(db.settings);
   });
@@ -3436,43 +3893,6 @@ async function startServer() {
   });
 
   // ==========================================
-  // ADMIN LEARNING RESOURCES (SUPER_ADMIN, ADMIN, EDITOR)
-  // ==========================================
-  adminRouter.post('/resources', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const slug = req.body.slug || req.body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const newRes: LearningResource = {
-      ...req.body,
-      id: `res-${Date.now()}`,
-      slug,
-      created_at: new Date().toISOString(),
-    };
-    db.resources.unshift(newRes);
-    saveDatabase(db);
-    res.status(201).json(newRes);
-  });
-
-  adminRouter.put('/resources/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.resources.findIndex((r) => r.id === req.params.id);
-    if (index === -1) {
-      res.status(404).json({ error: 'Resource not found' });
-      return;
-    }
-    db.resources[index] = { ...db.resources[index], ...req.body };
-    saveDatabase(db);
-    res.json(db.resources[index]);
-  });
-
-  adminRouter.delete('/resources/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const item = db.resources.find((r) => r.id === req.params.id);
-    db.resources = db.resources.filter((r) => r.id !== req.params.id);
-    saveDatabase(db);
-    logAdminAction('Delete Resource', 'Resource', req.params.id, `Deleted learning resource: ${item?.title || req.params.id}`, undefined, req);
-    res.json({ success: true });
-  });
-
-  // ==========================================
-  // ADMIN AUDIT LOGS (SUPER_ADMIN, ADMIN)
-  // ==========================================
   // IMAGE UPLOAD SYSTEM (50 MB Persistent Storage)
   // ==========================================
   adminRouter.post('/uploads/image', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
@@ -3646,7 +4066,6 @@ async function startServer() {
       announcements: Array.isArray(backupData.announcements) ? backupData.announcements : db.announcements,
       team: Array.isArray(backupData.team) ? backupData.team : db.team,
       projects: Array.isArray(backupData.projects) ? backupData.projects : db.projects,
-      achievements: Array.isArray(backupData.achievements) ? backupData.achievements : db.achievements,
       gallery: Array.isArray(backupData.gallery) ? backupData.gallery : db.gallery,
       join_applications: Array.isArray(backupData.join_applications) ? backupData.join_applications : db.join_applications,
       registrations: Array.isArray(backupData.registrations) ? backupData.registrations : db.registrations,
@@ -3655,7 +4074,6 @@ async function startServer() {
       certificates: Array.isArray(backupData.certificates) ? backupData.certificates : db.certificates,
       newsletter_subscribers: Array.isArray(backupData.newsletter_subscribers) ? backupData.newsletter_subscribers : db.newsletter_subscribers,
       newsletter_broadcasts: Array.isArray(backupData.newsletter_broadcasts) ? backupData.newsletter_broadcasts : db.newsletter_broadcasts,
-      resources: Array.isArray(backupData.resources) ? backupData.resources : db.resources,
       checkins: Array.isArray(backupData.checkins) ? backupData.checkins : db.checkins,
       audit_logs: Array.isArray(backupData.audit_logs) ? backupData.audit_logs : db.audit_logs,
     };
@@ -3826,22 +4244,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
   date TEXT NOT NULL
 );
 
--- 8. Achievements Table
-CREATE TABLE IF NOT EXISTS public.achievements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  category TEXT NOT NULL,
-  date DATE NOT NULL,
-  description TEXT NOT NULL,
-  award_rank TEXT,
-  organization TEXT NOT NULL,
-  members JSONB DEFAULT '[]'::jsonb,
-  image_url TEXT,
-  featured BOOLEAN DEFAULT false,
-  proof_link TEXT
-);
-
--- 9. Gallery Images Table
+-- 8. Gallery Images Table
 CREATE TABLE IF NOT EXISTS public.gallery_images (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -3853,7 +4256,7 @@ CREATE TABLE IF NOT EXISTS public.gallery_images (
   featured BOOLEAN DEFAULT false
 );
 
--- 10. Contact Messages Table
+-- 9. Contact Messages Table
 CREATE TABLE IF NOT EXISTS public.contact_messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
@@ -3870,7 +4273,6 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.join_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
@@ -3881,7 +4283,6 @@ CREATE POLICY "Allow public read on events" ON public.events FOR SELECT USING (t
 CREATE POLICY "Allow public read on announcements" ON public.announcements FOR SELECT USING (true);
 CREATE POLICY "Allow public read on team" ON public.team_members FOR SELECT USING (true);
 CREATE POLICY "Allow public read on projects" ON public.projects FOR SELECT USING (true);
-CREATE POLICY "Allow public read on achievements" ON public.achievements FOR SELECT USING (true);
 CREATE POLICY "Allow public read on gallery" ON public.gallery_images FOR SELECT USING (true);
 
 -- Insert policies for public submissions
@@ -3891,6 +4292,11 @@ CREATE POLICY "Allow public contact message submit" ON public.contact_messages F
 `;
     res.setHeader('Content-Type', 'text/plain');
     res.send(sql);
+  });
+
+  // 404 for unknown API endpoints
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API endpoint not found', path: req.path });
   });
 
   // Vite middleware for development vs static build in production

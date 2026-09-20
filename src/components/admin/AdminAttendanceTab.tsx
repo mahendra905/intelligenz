@@ -113,6 +113,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
 
   // Camera QR Scanner State
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -397,11 +398,15 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
   }, []);
 
-  const startCameraScanner = async () => {
+  const startCameraScanner = async (preferredFacingMode?: 'environment' | 'user') => {
     setCameraError(null);
+    const targetFacing = preferredFacingMode || cameraFacingMode;
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCameraError(
@@ -410,18 +415,24 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
         return;
       }
 
+      // Stop any existing tracks first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
       let stream: MediaStream | null = null;
       try {
-        // Try environment-facing (rear) camera first for easy mobile QR scanning
+        // Try requested camera facing mode first
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: targetFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
         });
       } catch (firstErr: any) {
         // If permission was specifically denied, do not retry and throw immediately
         if (firstErr?.name === 'NotAllowedError' || firstErr?.name === 'PermissionDeniedError') {
           throw firstErr;
         }
-        // If overconstrained or device facingMode not found (e.g. desktop webcam), fall back to default video
+        // Fallback to any available video stream (e.g. desktop webcam)
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         } catch {
@@ -434,12 +445,14 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
       }
 
       streamRef.current = stream;
+      setIsCameraActive(true);
+
+      // Attach immediately if videoRef is already mounted
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.setAttribute('playsinline', 'true');
-        await videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
-      setIsCameraActive(true);
     } catch (err: any) {
       console.warn('Camera access unavailable or denied:', err?.message || err);
       const isPermissionDenied =
@@ -450,7 +463,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
 
       if (isPermissionDenied) {
         setCameraError(
-          'Camera permission was blocked. Please allow camera access in your browser, or open in a new tab. You can also scan ticket files using "Scan QR File" or enter Roll Numbers manually below.'
+          'Camera permission was blocked. Please allow camera access in your browser settings, or open this page in a new tab. You can also scan ticket files using "Scan QR File" or enter Roll Numbers manually below.'
         );
       } else {
         setCameraError(
@@ -460,6 +473,22 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
       setIsCameraActive(false);
     }
   };
+
+  const toggleCameraFacingMode = async () => {
+    const nextMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    setCameraFacingMode(nextMode);
+    await startCameraScanner(nextMode);
+  };
+
+  // Robustly attach camera stream when the video element mounts or camera becomes active
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      const video = videoRef.current;
+      video.srcObject = streamRef.current;
+      video.setAttribute('playsinline', 'true');
+      video.play().catch((e) => console.warn('Camera video play error:', e));
+    }
+  }, [isCameraActive]);
 
   // Scan loop using hidden canvas + jsQR
   useEffect(() => {
@@ -561,19 +590,50 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
         if (ctx) {
           ctx.drawImage(img, 0, 0);
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth',
+          });
           if (code && code.data) {
-            setCheckinInput(code.data.trim());
+            const rawData = code.data.trim();
+            setCheckinInput(rawData);
             if (fastMode) {
-              executeCheckin(code.data.trim(), 'QR Code Upload');
+              executeCheckin(rawData, 'QR Code Upload');
             } else {
-              setCheckinInput(code.data.trim());
+              // Trigger verification for manual confirmation
+              setIsProcessing(true);
+              setActiveFeedback(null);
+              setVerificationResult(null);
+              api
+                .adminVerifyAttendance({
+                  code: rawData,
+                  event_id: selectedEventId || undefined,
+                })
+                .then((res) => {
+                  if (res.status === 'eligible') {
+                    playAttendanceTone('success', !soundEnabled);
+                  } else {
+                    playAttendanceTone('warning', !soundEnabled);
+                  }
+                  setVerificationResult(res);
+                })
+                .catch((err) => {
+                  playAttendanceTone('error', !soundEnabled);
+                  setActiveFeedback({
+                    type: 'error',
+                    title: 'Verification Failed',
+                    message: err.message || 'Could not verify ticket',
+                  });
+                })
+                .finally(() => {
+                  setIsProcessing(false);
+                });
             }
           } else {
+            playAttendanceTone('error', !soundEnabled);
             setActiveFeedback({
               type: 'error',
               title: 'No QR Code Detected',
-              message: 'Could not detect a valid QR code in the uploaded image. Please try another image.',
+              message: 'Could not detect a valid QR code in the uploaded image. Please ensure the QR code is clearly visible and try again.',
             });
           }
         }
@@ -581,6 +641,8 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    // Clear input value so same file can be uploaded consecutively for duplicate testing
+    e.target.value = '';
   };
 
   // ==========================================
@@ -721,7 +783,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
               Select Active Event
             </label>
             <select
-              value={selectedEventId}
+              value={selectedEventId || ''}
               onChange={(e) => handleEventChange(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
             >
@@ -820,7 +882,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
             {/* Camera Scanner Toggle */}
             <button
               type="button"
-              onClick={isCameraActive ? stopCameraScanner : startCameraScanner}
+              onClick={() => (isCameraActive ? stopCameraScanner() : startCameraScanner())}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 border ${
                 isCameraActive
                   ? 'bg-red-500/20 border-red-500/40 text-red-300 hover:bg-red-500/30'
@@ -870,6 +932,27 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
               </div>
             </div>
 
+            {/* Quick action buttons on top right */}
+            <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+              <button
+                type="button"
+                onClick={toggleCameraFacingMode}
+                className="p-1.5 bg-black/70 hover:bg-black/90 text-cyan-300 rounded-lg border border-cyan-500/30 backdrop-blur-sm transition-colors text-[11px] flex items-center gap-1"
+                title="Switch between front and rear camera"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{cameraFacingMode === 'environment' ? 'Rear' : 'Front'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={stopCameraScanner}
+                className="p-1.5 bg-black/70 hover:bg-red-500/80 text-slate-300 hover:text-white rounded-lg border border-slate-700/50 backdrop-blur-sm transition-colors"
+                title="Close camera"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <div className="absolute bottom-2 inset-x-0 text-center pointer-events-none">
               <span className="bg-black/80 text-cyan-300 text-[11px] font-mono px-3 py-1 rounded-full border border-cyan-500/30 backdrop-blur-sm">
                 Align QR Code inside the square
@@ -901,7 +984,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
             <div className="pt-2 border-t border-red-900/60 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={startCameraScanner}
+                onClick={() => startCameraScanner()}
                 className="px-2.5 py-1 bg-red-900/60 hover:bg-red-800/80 text-red-200 border border-red-700/60 rounded-md font-medium text-[11px] transition-colors"
               >
                 Retry Camera
@@ -928,7 +1011,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
               ref={inputRef}
               type="text"
               autoFocus
-              value={checkinInput}
+              value={checkinInput || ''}
               onChange={(e) => setCheckinInput(e.target.value)}
               placeholder="Scan QR / Enter Ticket Code (TKT-xxx) or Student Roll Number (e.g. 22K61A4201)..."
               className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl px-4 py-3 pl-11 pr-10 text-sm font-mono text-white placeholder-slate-500 transition-colors"
@@ -1138,7 +1221,7 @@ export function AdminAttendanceTab({ onRefreshData }: AdminAttendanceTabProps) {
           <div className="relative min-w-[240px]">
             <input
               type="text"
-              value={searchQuery}
+              value={searchQuery || ''}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter by name, roll no, ticket..."
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 pl-9 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"

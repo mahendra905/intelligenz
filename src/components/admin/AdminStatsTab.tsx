@@ -58,7 +58,7 @@ const AVAILABLE_ICONS = [
   { name: 'Layers', label: 'Layers / Ecosystem', icon: Layers },
   { name: 'Target', label: 'Target / Milestones', icon: Target },
   { name: 'Zap', label: 'Zap / Innovation', icon: Zap },
-  { name: 'Star', label: 'Star / Achievements', icon: Star },
+  { name: 'Star', label: 'Star / Excellence', icon: Star },
 ];
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -527,7 +527,7 @@ export const AdminStatsTab: React.FC<AdminStatsTabProps> = ({ stats, onSaveStats
                     <input
                       type="text"
                       required
-                      value={stat.value}
+                      value={stat.value || ''}
                       onChange={(e) => handleUpdateField(stat.id, 'value', e.target.value)}
                       placeholder="e.g. 650+, 28+, 100K"
                       className="w-full px-3 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-sm text-white font-bold font-['Outfit'] focus:outline-none focus:border-[#00E5FF]"
@@ -545,7 +545,7 @@ export const AdminStatsTab: React.FC<AdminStatsTabProps> = ({ stats, onSaveStats
                     <input
                       type="text"
                       required
-                      value={stat.label}
+                      value={stat.label || ''}
                       onChange={(e) => handleUpdateField(stat.id, 'label', e.target.value.toUpperCase())}
                       placeholder="e.g. STUDENTS REACHED"
                       className="w-full px-3 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white font-semibold uppercase tracking-wider focus:outline-none focus:border-[#00E5FF]"

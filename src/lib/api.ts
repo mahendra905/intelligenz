@@ -3,7 +3,6 @@ import {
   Announcement,
   TeamMember,
   Project,
-  Achievement,
   GalleryImage,
   JoinApplication,
   EventRegistration,
@@ -17,7 +16,6 @@ import {
   AttendanceRecord,
   AttendanceVerificationResult,
   AttendanceRosterResponse,
-  LearningResource,
   AuditLog,
   ParticipationType,
   TeamMemberRegistration,
@@ -182,6 +180,8 @@ export const api = {
     ticket_code?: string;
     qr_token?: string;
     qr_payload?: string;
+    email_sent?: boolean;
+    email_status?: string;
   }> => {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/register`, {
       method: 'POST',
@@ -230,12 +230,6 @@ export const api = {
     const url = category && category !== 'All' ? `/api/projects?category=${encodeURIComponent(category)}` : '/api/projects';
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to load projects');
-    return res.json();
-  },
-
-  getAchievements: async (): Promise<Achievement[]> => {
-    const res = await fetch('/api/achievements');
-    if (!res.ok) throw new Error('Failed to load achievements');
     return res.json();
   },
 
@@ -780,35 +774,6 @@ export const api = {
     return res.json();
   },
 
-  adminCreateAchievement: async (data: Partial<Achievement>) => {
-    const res = await fetch('/api/admin/achievements', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to create achievement');
-    return res.json();
-  },
-
-  adminUpdateAchievement: async (id: string, data: Partial<Achievement>) => {
-    const res = await fetch(`/api/admin/achievements/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to update achievement');
-    return res.json();
-  },
-
-  adminDeleteAchievement: async (id: string) => {
-    const res = await fetch(`/api/admin/achievements/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to delete achievement');
-    return res.json();
-  },
-
   adminCreateGalleryItem: async (data: Partial<GalleryImage>) => {
     const res = await fetch('/api/admin/gallery', {
       method: 'POST',
@@ -924,6 +889,33 @@ export const api = {
     return res.json();
   },
 
+  adminGetEmailStatus: async (): Promise<{
+    enabled: boolean;
+    is_live_smtp: boolean;
+    provider_info: string;
+    sender_name: string;
+    sender_address: string;
+    smtp_host: string | null;
+    total_sent_this_session: number;
+  }> => {
+    const res = await fetch('/api/admin/email/status', {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch email status');
+    return res.json();
+  },
+
+  adminSendTestEmail: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch('/api/admin/email/test', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to send test email');
+    return result;
+  },
+
   getSupabaseSchemaSql: async (): Promise<string> => {
     const res = await fetch('/api/export-supabase-sql');
     if (!res.ok) throw new Error('Failed to fetch SQL');
@@ -1032,18 +1024,6 @@ export const api = {
 
   deleteTeamMember: async (id: string) => {
     return api.adminDeleteTeamMember(id);
-  },
-
-  createAchievement: async (data: Partial<Achievement>) => {
-    return api.adminCreateAchievement(data);
-  },
-
-  updateAchievement: async (id: string, data: Partial<Achievement>) => {
-    return api.adminUpdateAchievement(id, data);
-  },
-
-  deleteAchievement: async (id: string) => {
-    return api.adminDeleteAchievement(id);
   },
 
   createGalleryItem: async (data: Partial<GalleryImage>) => {
@@ -1278,47 +1258,6 @@ export const api = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete check-in record');
-    return res.json();
-  },
-
-  // ==========================================
-  // LEARNING RESOURCES (Public & Admin)
-  // ==========================================
-  getResources: async (category?: string): Promise<LearningResource[]> => {
-    const url = category && category !== 'All' ? `/api/resources?category=${encodeURIComponent(category)}` : '/api/resources';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load resources');
-    return res.json();
-  },
-
-  adminCreateResource: async (data: Partial<LearningResource>): Promise<LearningResource> => {
-    const res = await fetch('/api/admin/resources', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to create resource');
-    return result;
-  },
-
-  adminUpdateResource: async (id: string, data: Partial<LearningResource>): Promise<LearningResource> => {
-    const res = await fetch(`/api/admin/resources/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update resource');
-    return result;
-  },
-
-  adminDeleteResource: async (id: string): Promise<{ success: boolean }> => {
-    const res = await fetch(`/api/admin/resources/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to delete resource');
     return res.json();
   },
 

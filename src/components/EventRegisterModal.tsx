@@ -82,7 +82,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
     if (!ctx) return;
 
     canvas.width = 600;
-    canvas.height = 760;
+    canvas.height = 780;
 
     // Background
     ctx.fillStyle = '#0D1017';
@@ -111,25 +111,54 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
     ctx.font = 'bold 14px monospace';
     ctx.fillText(ticketCode, canvas.width / 2, 92);
 
-    // Event title
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 17px sans-serif';
-    const eventTitle = event.title.length > 44 ? event.title.substring(0, 41) + '...' : event.title;
-    ctx.fillText(eventTitle, canvas.width / 2, 138);
+    // Helper to wrap canvas text
+    const wrapCanvasLines = (text: string, maxWidth: number): string[] => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+      for (const w of words) {
+        const testLine = currentLine ? `${currentLine} ${w}` : w;
+        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = w;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    };
 
-    // Event date & venue
+    // Event title (auto-wrapped)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px sans-serif';
+    const titleLines = wrapCanvasLines(event.title, 520).slice(0, 2);
+    let currentY = 132;
+    titleLines.forEach((line) => {
+      ctx.fillText(line, canvas.width / 2, currentY);
+      currentY += 20;
+    });
+
+    // Event date & venue (auto-wrapped)
     ctx.fillStyle = '#9CA3AF';
     ctx.font = '12px sans-serif';
-    ctx.fillText(`${event.date} • ${event.start_time}`, canvas.width / 2, 162);
-    const venueText = event.venue.length > 55 ? event.venue.substring(0, 52) + '...' : event.venue;
-    ctx.fillText(venueText, canvas.width / 2, 182);
+    ctx.fillText(`${event.date} • ${event.start_time}`, canvas.width / 2, currentY + 4);
+    currentY += 20;
+
+    if (event.venue) {
+      const venueLines = wrapCanvasLines(event.venue, 520).slice(0, 2);
+      venueLines.forEach((vLine) => {
+        ctx.fillText(vLine, canvas.width / 2, currentY);
+        currentY += 16;
+      });
+    }
 
     // Draw QR Image
     const qrImg = new Image();
     qrImg.onload = () => {
-      const qrSize = 280;
+      const qrSize = 270;
       const qrX = (canvas.width - qrSize) / 2;
-      const qrY = 210;
+      const qrY = Math.max(currentY + 10, 205);
 
       // QR white frame
       ctx.fillStyle = '#FFFFFF';
@@ -137,63 +166,64 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
       // Participant info panel
+      const infoPanelY = qrY + qrSize + 24;
       ctx.fillStyle = '#0A0B0E';
-      ctx.fillRect(36, 525, canvas.width - 72, 130);
+      ctx.fillRect(36, infoPanelY, canvas.width - 72, 126);
       ctx.strokeStyle = '#1A1C23';
       ctx.lineWidth = 1;
-      ctx.strokeRect(36, 525, canvas.width - 72, 130);
+      ctx.strokeRect(36, infoPanelY, canvas.width - 72, 126);
 
       ctx.textAlign = 'left';
       ctx.fillStyle = '#6B7280';
       ctx.font = '11px sans-serif';
-      ctx.fillText('PARTICIPANT:', 56, 555);
-      ctx.fillText('ROLL NUMBER:', 56, 585);
-      ctx.fillText('DEPARTMENT:', 56, 615);
-      ctx.fillText('PASS TYPE:', 56, 642);
+      ctx.fillText('PARTICIPANT:', 56, infoPanelY + 28);
+      ctx.fillText('ROLL NUMBER:', 56, infoPanelY + 56);
+      ctx.fillText('DEPARTMENT:', 56, infoPanelY + 84);
+      ctx.fillText('PASS TYPE:', 56, infoPanelY + 110);
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 13px sans-serif';
       const nameStr = pType !== 'SOLO' ? `${fullName} (Team: ${teamName})` : fullName;
-      ctx.fillText(nameStr.substring(0, 36), 180, 555);
+      ctx.fillText(nameStr.length > 40 ? nameStr.substring(0, 38) + '...' : nameStr, 180, infoPanelY + 28);
       ctx.fillStyle = '#00E5FF';
       ctx.font = 'bold 13px monospace';
-      ctx.fillText(rollNumber, 180, 585);
+      const displayRollNumber = (successData?.registration?.roll_number || rollNumber || '').toUpperCase();
+      ctx.fillText(displayRollNumber, 180, infoPanelY + 56);
       ctx.fillStyle = '#D1D5DB';
       ctx.font = '12px sans-serif';
-      ctx.fillText(department, 180, 615);
+      ctx.fillText(department, 180, infoPanelY + 84);
       ctx.fillStyle = '#A78BFA';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(`${pType} (${totalCurrentMembers} Members)`, 180, 642);
+      ctx.fillText(`${pType} (${totalCurrentMembers} Members)`, 180, infoPanelY + 110);
 
       // Bottom verification prompt
       ctx.textAlign = 'center';
       ctx.fillStyle = '#10B981';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('✓ Scan QR code at entrance for automated check-in', canvas.width / 2, 695);
+      ctx.fillText('✓ Scan QR code at entrance for automated check-in', canvas.width / 2, infoPanelY + 144);
 
       const link = document.createElement('a');
       link.download = `event-ticket-${ticketCode}.png`;
       link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
       link.click();
+      setTimeout(() => {
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 100);
     };
     qrImg.src = qrDataUrl;
   };
 
-  // Print official scanner-friendly ticket
+  // Print official scanner-friendly ticket (iframe-safe, popup-blocker proof)
   const handlePrintTicket = () => {
     if (!qrDataUrl || !event) return;
+    const displayRollNumber = (successData?.registration?.roll_number || rollNumber || '').toUpperCase();
     const ticketCode =
       successData?.ticket_code ||
       successData?.registration?.ticket_code ||
       (successData?.registration?.id ? `TKT-${successData.registration.id.slice(-6).toUpperCase()}` : 'TKT-PASS');
 
-    const printWindow = window.open('', '_blank', 'width=650,height=800');
-    if (!printWindow) {
-      alert('Please allow popups to print your event ticket.');
-      return;
-    }
-
-    printWindow.document.write(`
+    const printHtml = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -206,8 +236,8 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
             .club-name { font-size: 19px; font-weight: 800; letter-spacing: 1px; color: #000; }
             .sub { font-size: 11px; color: #666; text-transform: uppercase; margin-top: 4px; }
             .ticket-badge { display: inline-block; background: #000; color: #fff; font-family: monospace; font-size: 14px; font-weight: bold; padding: 4px 14px; border-radius: 4px; margin-top: 10px; }
-            .event-title { font-size: 17px; font-weight: bold; margin: 14px 0 6px; color: #111; }
-            .event-meta { font-size: 12px; color: #555; margin-bottom: 16px; line-height: 1.4; }
+            .event-title { font-size: 17px; font-weight: bold; margin: 14px 0 6px; color: #111; word-break: break-word; overflow-wrap: break-word; }
+            .event-meta { font-size: 12px; color: #555; margin-bottom: 16px; line-height: 1.4; word-break: break-word; overflow-wrap: break-word; }
             .qr-wrapper { margin: 12px auto; padding: 12px; background: #fff; border: 1px solid #ddd; display: inline-block; border-radius: 8px; }
             .qr-img { width: 230px; height: 230px; display: block; }
             .details-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; margin-top: 16px; }
@@ -236,7 +266,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
               </tr>
               <tr>
                 <td class="label">Roll Number</td>
-                <td class="val">${rollNumber}</td>
+                <td class="val">${displayRollNumber}</td>
               </tr>
               <tr>
                 <td class="label">Department</td>
@@ -251,16 +281,47 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
               ✓ Scan at event entrance for instant automated check-in
             </div>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
-    `);
-    printWindow.document.close();
+    `;
+
+    // Try hidden iframe print first to bypass iframe popup blocking
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(printHtml);
+        doc.close();
+        iframe.contentWindow?.focus();
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          }, 1500);
+        }, 350);
+        return;
+      }
+    } catch {
+      // Fall back to window.open if iframe printing not permitted
+    }
+
+    const printWindow = window.open('', '_blank', 'width=650,height=800');
+    if (printWindow) {
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+        setTimeout(() => printWindow.close(), 500);
+      };
+    }
   };
 
   const handleCopyTicketCode = (code: string) => {
@@ -317,7 +378,8 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
   const handleMemberChange = (index: number, field: keyof TeamMemberRegistration, value: string) => {
     setTeamMembers((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const val = field === 'roll_number' ? value.toUpperCase() : value;
+      updated[index] = { ...updated[index], [field]: val };
       return updated;
     });
   };
@@ -325,6 +387,13 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const formattedRollNumber = (rollNumber || '').trim().toUpperCase();
+    if (!formattedRollNumber) {
+      setError('Please enter a valid Roll Number.');
+      return;
+    }
+    setRollNumber(formattedRollNumber);
 
     // Front-end validation
     if (pType !== 'SOLO' && !teamName.trim()) {
@@ -353,15 +422,20 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
     setLoading(true);
 
     try {
+      const formattedMembers = teamMembers.map((m) => ({
+        ...m,
+        roll_number: (m.roll_number || '').trim().toUpperCase(),
+      }));
+
       const res = await api.registerForEvent(event.id, {
         full_name: fullName,
         email,
         phone,
         department,
         year,
-        roll_number: rollNumber,
+        roll_number: formattedRollNumber,
         team_name: pType !== 'SOLO' ? teamName : undefined,
-        team_members: pType !== 'SOLO' ? teamMembers : undefined,
+        team_members: pType !== 'SOLO' ? formattedMembers : undefined,
       });
 
       setSuccessData(res);
@@ -386,6 +460,12 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
     onClose();
   };
 
+  const displayPassRollNumber = (
+    successData?.registration?.roll_number ||
+    rollNumber ||
+    ''
+  ).toUpperCase();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div
@@ -404,22 +484,23 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
         </button>
 
         {successData ? (
-          <div className="py-2 sm:py-4 space-y-4">
+          <div className="py-2 sm:py-3 space-y-4 sm:space-y-5">
+            {/* Header: Status Icon, Heading, and Subtitle */}
             <div className="text-center space-y-2">
               <div className="inline-flex p-3 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <CheckCircle2 className="w-9 h-9 animate-bounce" />
+                <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9" />
               </div>
-              <h3 className="text-2xl font-bold text-white font-['Outfit']">
+              <h3 className="text-2xl sm:text-3xl font-bold text-white font-['Outfit'] tracking-tight">
                 {successData.registration?.status === 'Confirmed' ? 'Registration Confirmed!' : 'Registration Waitlisted'}
               </h3>
-              <p className="text-xs sm:text-sm text-[#9CA3AF] max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-[#9CA3AF] max-w-xl mx-auto leading-relaxed break-words px-2">
                 {pType !== 'SOLO' ? (
                   <>
                     Team <span className="text-[#00E5FF] font-semibold">{teamName}</span> ({totalCurrentMembers} Members) registered for <span className="text-white font-medium">{event.title}</span>.
                   </>
                 ) : (
                   <>
-                    <span className="text-white font-semibold">{fullName}</span> (Roll: <span className="font-mono text-[#00E5FF]">{rollNumber}</span>) registered for <span className="text-white font-medium">{event.title}</span>.
+                    <span className="text-white font-semibold">{fullName}</span> (Roll: <span className="font-mono text-[#00E5FF] font-bold">{displayPassRollNumber}</span>) registered for <span className="text-white font-medium">{event.title}</span>.
                   </>
                 )}
               </p>
@@ -428,15 +509,16 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
             {/* If Confirmed: Show Unique Attendance QR Pass Card */}
             {successData.registration?.status === 'Confirmed' ? (
               <div className="p-4 sm:p-5 rounded-2xl bg-[#08090C] border border-[#1E222D] shadow-inner space-y-4">
-                {/* Ticket ID Badge */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1A1D27] pb-3">
-                  <div className="flex items-center gap-2">
+                {/* Attendance Ticket Header with Ticket Code Badge & Copy Code Button */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-[#1A1D27] pb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">Attendance Ticket:</span>
                     <span className="font-mono font-bold text-[#00E5FF] text-sm bg-[#00E5FF]/10 px-2.5 py-0.5 rounded border border-[#00E5FF]/20">
                       {successData.ticket_code || successData.registration?.ticket_code || `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`}
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() =>
                       handleCopyTicketCode(
                         successData.ticket_code ||
@@ -444,89 +526,109 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                           `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`
                       )
                     }
-                    className="inline-flex items-center gap-1 text-[11px] text-[#9CA3AF] hover:text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#222838] text-[11px] text-[#9CA3AF] hover:text-white transition-all cursor-pointer"
                   >
                     {copiedTicket ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">Copied</span>
+                        <span className="text-emerald-400 font-medium">Copied</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Code</span>
+                        <Copy className="w-3.5 h-3.5 text-[#00E5FF]" />
+                        <span className="font-medium">Copy Code</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                {/* QR Code Container */}
-                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-[#0E1118] p-4 rounded-xl border border-[#1F2330]">
-                  <div className="relative p-2.5 bg-white rounded-xl shadow-lg shrink-0">
+                {/* QR Code Container on Left & Multi-Line Detailed Information on Right */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 bg-[#0E1118] p-4 sm:p-5 rounded-xl border border-[#1F2330]">
+                  {/* QR Code Card on Left */}
+                  <div className="relative p-2.5 sm:p-3 bg-white rounded-xl shadow-lg shrink-0 flex items-center justify-center">
                     {qrDataUrl ? (
                       <img
                         src={qrDataUrl}
                         alt="Attendance QR Code"
-                        className="w-40 h-40 object-contain rounded"
+                        className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded"
                       />
                     ) : (
-                      <div className="w-40 h-40 flex flex-col items-center justify-center text-gray-500 bg-gray-100 rounded">
+                      <div className="w-36 h-36 sm:w-40 sm:h-40 flex flex-col items-center justify-center text-gray-500 bg-gray-100 rounded">
                         <Loader2 className="w-6 h-6 animate-spin text-[#00E5FF] mb-1" />
                         <span className="text-[10px] font-medium">Generating QR...</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 text-left space-y-2 text-xs w-full">
-                    <div>
-                      <div className="text-[10px] uppercase text-[#6B7280] font-semibold tracking-wider">Event</div>
-                      <div className="text-white font-bold text-sm leading-tight line-clamp-1">{event.title}</div>
+                  {/* Information Details on Right: flex-1 min-w-0 for robust wrapping */}
+                  <div className="flex-1 min-w-0 text-left space-y-3 w-full">
+                    {/* EVENT */}
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase text-[#6B7280] font-bold tracking-wider mb-0.5">
+                        EVENT
+                      </div>
+                      <div className="text-white font-bold text-sm sm:text-base leading-snug break-words">
+                        {event.title}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1F2330]">
-                      <div>
-                        <div className="text-[10px] uppercase text-[#6B7280] font-medium">Participant</div>
-                        <div className="text-[#E5E7EB] font-semibold truncate">
+                    {/* PARTICIPANT & ROLL NUMBER */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[#1F2330]">
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase text-[#6B7280] font-bold tracking-wider mb-0.5">
+                          PARTICIPANT
+                        </div>
+                        <div className="text-[#E5E7EB] font-semibold text-xs sm:text-sm break-words leading-tight">
                           {pType !== 'SOLO' ? `${fullName} (${teamName})` : fullName}
                         </div>
                       </div>
-                      <div>
-                        <div className="text-[10px] uppercase text-[#6B7280] font-medium">Roll Number</div>
-                        <div className="font-mono text-[#00E5FF] font-semibold">{rollNumber}</div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase text-[#6B7280] font-bold tracking-wider mb-0.5">
+                          ROLL NUMBER
+                        </div>
+                        <div className="font-mono text-[#00E5FF] font-bold text-xs sm:text-sm tracking-wide break-all">
+                          {displayPassRollNumber}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="pt-1 border-t border-[#1F2330]">
-                      <div className="text-[10px] uppercase text-[#6B7280] font-medium">Venue & Time</div>
-                      <div className="text-[#9CA3AF] text-[11px] truncate">
-                        {event.date} • {event.start_time} ({event.venue})
+                    {/* VENUE & TIME */}
+                    <div className="pt-2 border-t border-[#1F2330] min-w-0">
+                      <div className="text-[10px] uppercase text-[#6B7280] font-bold tracking-wider mb-0.5">
+                        VENUE & TIME
+                      </div>
+                      <div className="text-[#D1D5DB] text-xs sm:text-sm leading-relaxed break-words">
+                        {event.date} • {event.start_time}{event.venue ? ` (${event.venue})` : ''}
                       </div>
                     </div>
 
-                    <div className="pt-1 text-[11px] text-emerald-400 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      <span>Ready for entrance check-in</span>
+                    {/* Ready for entrance check-in badge */}
+                    <div className="pt-1">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold text-xs">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                        <span>Ready for entrance check-in</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Guidance text */}
-                <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-left text-xs text-[#A7F3D0] flex items-start gap-2">
+                {/* Notice box */}
+                <div className="p-3 sm:p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-left text-xs text-[#A7F3D0] flex items-start gap-2.5">
                   <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] leading-relaxed text-[#D1D5DB]">
-                    <strong className="text-white">Keep this QR ready:</strong> Present this QR code on your phone or print it. The event coordinator will scan it with the scanner for instant automated check-in.
+                  <p className="text-[11px] sm:text-xs leading-relaxed text-[#D1D5DB] break-words">
+                    <strong className="text-white font-semibold">Keep this QR ready:</strong> Present this QR code on your phone or print it. The event coordinator will scan it with the scanner for instant automated check-in.
                   </p>
                 </div>
 
-                {/* Download and Print Action Buttons */}
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                {/* Download Pass and Print Ticket Action Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                   <button
                     type="button"
                     onClick={handleDownloadTicket}
                     disabled={!qrDataUrl}
-                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] text-white text-xs font-semibold transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] hover:border-[#00E5FF]/40 text-white text-xs font-semibold tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <Download className="w-4 h-4 text-[#00E5FF]" />
+                    <Download className="w-4 h-4 text-[#00E5FF] shrink-0" />
                     <span>Download Pass</span>
                   </button>
 
@@ -534,9 +636,9 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                     type="button"
                     onClick={handlePrintTicket}
                     disabled={!qrDataUrl}
-                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] text-white text-xs font-semibold transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#262C40] hover:border-[#A78BFA]/40 text-white text-xs font-semibold tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <Printer className="w-4 h-4 text-[#A78BFA]" />
+                    <Printer className="w-4 h-4 text-[#A78BFA] shrink-0" />
                     <span>Print Ticket</span>
                   </button>
                 </div>
@@ -550,11 +652,12 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
               </div>
             )}
 
+            {/* DONE Action Button */}
             <button
               onClick={handleClose}
-              className="w-full py-3 rounded-lg bg-[#00E5FF] hover:bg-[#33ebff] text-[#0A0B0E] font-bold text-xs uppercase tracking-widest shadow-lg shadow-[#00E5FF]/20 transition-all"
+              className="w-full py-3 sm:py-3.5 rounded-xl bg-[#00E5FF] hover:bg-[#33ebff] text-[#0A0B0E] font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg shadow-[#00E5FF]/20 hover:shadow-[#00E5FF]/30 transition-all cursor-pointer"
             >
-              Done
+              DONE
             </button>
           </div>
         ) : (
@@ -614,7 +717,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                     type="text"
                     required
                     placeholder={pType === 'DUO' ? 'e.g. AI Pioneers' : 'e.g. Neural Ninjas'}
-                    value={teamName}
+                    value={teamName || ''}
                     onChange={(e) => setTeamName(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                   />
@@ -641,7 +744,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                     type="text"
                     required
                     placeholder="e.g. Rahul Sharma"
-                    value={fullName}
+                    value={fullName || ''}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                   />
@@ -656,7 +759,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                       type="email"
                       required
                       placeholder="student@drkvsrit.ac.in"
-                      value={email}
+                      value={email || ''}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                     />
@@ -670,8 +773,8 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                       type="text"
                       required
                       placeholder="e.g. 238X1A05XX"
-                      value={rollNumber}
-                      onChange={(e) => setRollNumber(e.target.value)}
+                      value={rollNumber || ''}
+                      onChange={(e) => setRollNumber(e.target.value.toUpperCase())}
                       className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs font-mono uppercase focus:outline-none focus:border-[#00E5FF] transition-colors"
                     />
                   </div>
@@ -683,7 +786,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                       Department *
                     </label>
                     <select
-                      value={department}
+                      value={department || 'CSE (AIML)'}
                       onChange={(e) => setDepartment(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                     >
@@ -703,7 +806,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                       Year of Study *
                     </label>
                     <select
-                      value={year}
+                      value={year || '3rd Year'}
                       onChange={(e) => setYear(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                     >
@@ -722,7 +825,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                   <input
                     type="tel"
                     placeholder="+91 98765 43210"
-                    value={phone}
+                    value={phone || ''}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#00E5FF] transition-colors"
                   />
@@ -778,7 +881,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                           type="text"
                           required
                           placeholder="e.g. Priya Sharma"
-                          value={member.full_name}
+                          value={member.full_name || ''}
                           onChange={(e) => handleMemberChange(idx, 'full_name', e.target.value)}
                           className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#A78BFA] transition-colors"
                         />
@@ -793,7 +896,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                             type="email"
                             required
                             placeholder="member@drkvsrit.ac.in"
-                            value={member.email}
+                            value={member.email || ''}
                             onChange={(e) => handleMemberChange(idx, 'email', e.target.value)}
                             className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs focus:outline-none focus:border-[#A78BFA] transition-colors"
                           />
@@ -807,8 +910,8 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                             type="text"
                             required
                             placeholder="e.g. 238X1A05YY"
-                            value={member.roll_number}
-                            onChange={(e) => handleMemberChange(idx, 'roll_number', e.target.value)}
+                            value={member.roll_number || ''}
+                            onChange={(e) => handleMemberChange(idx, 'roll_number', e.target.value.toUpperCase())}
                             className="w-full px-3.5 py-2 rounded-lg bg-[#11141D] border border-[#1A1C23] text-white text-xs font-mono uppercase focus:outline-none focus:border-[#A78BFA] transition-colors"
                           />
                         </div>

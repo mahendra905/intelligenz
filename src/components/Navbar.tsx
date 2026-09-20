@@ -10,14 +10,12 @@ import {
   Bell,
   Code2,
   Users,
-  Trophy,
   Image as ImageIcon,
   Info,
   Mail,
   ChevronRight,
   ExternalLink,
   Award,
-  BookOpen,
 } from 'lucide-react';
 import { SiteSettings } from '../types';
 
@@ -52,10 +50,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { label: 'Events', path: '/events', icon: Calendar },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Certificates', path: '/certificates', icon: Award },
-    { label: 'Resources', path: '/resources', icon: BookOpen },
     { label: 'Projects', path: '/projects', icon: Code2 },
     { label: 'Team', path: '/team', icon: Users },
-    { label: 'Achievements', path: '/achievements', icon: Trophy },
     { label: 'Gallery', path: '/gallery', icon: ImageIcon },
     { label: 'About', path: '/about', icon: Info },
     { label: 'Contact', path: '/contact', icon: Mail },

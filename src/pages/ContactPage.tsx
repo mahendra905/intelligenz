@@ -188,7 +188,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                       type="text"
                       required
                       placeholder="e.g. Ananya Rao"
-                      value={name}
+                      value={name || ''}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                     />
@@ -202,7 +202,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                       type="email"
                       required
                       placeholder="name@domain.com"
-                      value={email}
+                      value={email || ''}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                     />
@@ -217,7 +217,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                     type="text"
                     required
                     placeholder="e.g. Hackathon Sponsorship / Workshop Inquiry"
-                    value={subject}
+                    value={subject || ''}
                     onChange={(e) => setSubject(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors"
                   />
@@ -231,7 +231,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                     required
                     rows={4}
                     placeholder="Write your query or proposal details..."
-                    value={message}
+                    value={message || ''}
                     onChange={(e) => setMessage(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#6B7280] focus:outline-none focus:border-[#00E5FF] transition-colors resize-none"
                   />

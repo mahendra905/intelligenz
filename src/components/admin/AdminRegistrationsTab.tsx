@@ -126,14 +126,14 @@ export const AdminRegistrationsTab: React.FC<AdminRegistrationsTabProps> = ({
           <input
             type="text"
             placeholder="Search by participant name, roll number, email, or college..."
-            value={search}
+            value={search || ''}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white placeholder:text-[#4B5563] focus:outline-none focus:border-purple-400"
           />
         </div>
 
         <select
-          value={eventFilter}
+          value={eventFilter || 'All'}
           onChange={(e) => setEventFilter(e.target.value)}
           className="px-3 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-purple-400"
         >

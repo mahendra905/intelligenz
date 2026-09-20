@@ -42,7 +42,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ team, onNavigate }) => {
     {
       title: 'Media & Public Relations',
       category: 'Media Team',
-      desc: 'Amplifying club achievements, technical newsletters, and digital presence.',
+      desc: 'Amplifying club initiatives, technical newsletters, and digital presence.',
     },
   ];
 

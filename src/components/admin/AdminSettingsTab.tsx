@@ -30,6 +30,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
     contact_phone: '+91 98765 43210',
     contact_address: 'AI & Data Science Block, Room 304, DR. KVSRIT Campus, Kurnool, Andhra Pradesh - 518218',
     is_recruitment_open: true,
+    join_us_status: true,
     social_links: {
       github: 'https://github.com/intelligenz-club',
       linkedin: 'https://linkedin.com/company/intelligenz-club',
@@ -46,10 +47,22 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   useEffect(() => {
     if (settings) {
       setFormData({
-        ...settings,
+        club_name: settings.club_name || '',
+        club_tagline: settings.club_tagline || '',
+        department_name: settings.department_name || '',
+        college_name: settings.college_name || '',
+        contact_email: settings.contact_email || '',
+        contact_phone: settings.contact_phone || '',
+        contact_address: settings.contact_address || '',
+        is_recruitment_open: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
+        join_us_status: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
+        announcement_ticker: settings.announcement_ticker || '',
         social_links: {
-          ...formData.social_links,
-          ...(settings.social_links || {}),
+          github: settings.social_links?.github || '',
+          linkedin: settings.social_links?.linkedin || '',
+          instagram: settings.social_links?.instagram || '',
+          youtube: settings.social_links?.youtube || '',
+          discord: settings.social_links?.discord || '',
         },
       });
     }
@@ -106,7 +119,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               <input
                 type="text"
                 required
-                value={formData.club_name}
+                value={formData.club_name || ''}
                 onChange={(e) => setFormData({ ...formData, club_name: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
               />
@@ -118,7 +131,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.club_tagline}
+                value={formData.club_tagline || ''}
                 onChange={(e) => setFormData({ ...formData, club_tagline: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
               />
@@ -133,7 +146,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               <input
                 type="text"
                 required
-                value={formData.department_name}
+                value={formData.department_name || ''}
                 onChange={(e) => setFormData({ ...formData, department_name: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
               />
@@ -146,7 +159,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               <input
                 type="text"
                 required
-                value={formData.college_name}
+                value={formData.college_name || ''}
                 onChange={(e) => setFormData({ ...formData, college_name: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
               />
@@ -174,24 +187,66 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
             />
           </div>
 
-          <div className="p-4 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <UserCheck className="w-5 h-5 text-emerald-400" />
+          {/* Join Us Status */}
+          <div className="p-4 sm:p-5 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div
+                className={`p-2.5 rounded-lg border shrink-0 transition-colors ${
+                  (formData.join_us_status ?? formData.is_recruitment_open)
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}
+              >
+                <UserCheck className="w-5 h-5" />
+              </div>
               <div>
-                <div className="text-xs font-bold text-white">Recruitment Portal Status</div>
-                <div className="text-[11px] text-[#6B7280]">
-                  Allow prospective student candidates to submit membership applications
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Join Us Status</span>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded font-extrabold uppercase border ${
+                      (formData.join_us_status ?? formData.is_recruitment_open)
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    }`}
+                  >
+                    {(formData.join_us_status ?? formData.is_recruitment_open) ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#9CA3AF] mt-0.5">
+                  {(formData.join_us_status ?? formData.is_recruitment_open)
+                    ? 'Join Us is currently ON: Public website allows prospective students to submit membership applications.'
+                    : 'Join Us is currently OFF: Public website displays "We\'re currently not accepting new club member applications." and blocks new submissions.'}
                 </div>
               </div>
             </div>
 
-            <input
-              type="checkbox"
-              id="settings-recruitment-toggle"
-              checked={formData.is_recruitment_open}
-              onChange={(e) => setFormData({ ...formData, is_recruitment_open: e.target.checked })}
-              className="w-5 h-5 rounded bg-[#0D1017] border-[#1A1C23] text-emerald-500 focus:ring-0 cursor-pointer"
-            />
+            <div className="flex items-center gap-2.5 self-end sm:self-center">
+              <span className="text-xs text-[#9CA3AF] font-medium hidden xs:inline">
+                Join Us Applications
+              </span>
+              <button
+                type="button"
+                id="join-us-status-toggle"
+                onClick={() => {
+                  const currentStatus = formData.join_us_status !== undefined
+                    ? formData.join_us_status
+                    : (formData.is_recruitment_open ?? true);
+                  const nextStatus = !currentStatus;
+                  setFormData({
+                    ...formData,
+                    is_recruitment_open: nextStatus,
+                    join_us_status: nextStatus,
+                  });
+                }}
+                className={`px-4 py-2 rounded-lg text-xs font-black font-mono tracking-wider uppercase transition-all duration-200 border cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                  (formData.join_us_status ?? formData.is_recruitment_open)
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-[#0A0B0E] border-emerald-400 shadow-emerald-500/20'
+                    : 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-rose-600/20'
+                }`}
+              >
+                <span>[ {(formData.join_us_status ?? formData.is_recruitment_open) ? 'ON' : 'OFF'} ]</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -209,7 +264,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </label>
               <input
                 type="email"
-                value={formData.contact_email}
+                value={formData.contact_email || ''}
                 onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-indigo-400"
               />
@@ -221,7 +276,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.contact_phone}
+                value={formData.contact_phone || ''}
                 onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-indigo-400"
               />
@@ -234,7 +289,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
             </label>
             <input
               type="text"
-              value={formData.contact_address}
+              value={formData.contact_address || ''}
               onChange={(e) => setFormData({ ...formData, contact_address: e.target.value })}
               className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-indigo-400"
             />

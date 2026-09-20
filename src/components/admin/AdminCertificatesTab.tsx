@@ -288,7 +288,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
         <div className="relative flex-1 min-w-[240px]">
           <input
             type="text"
-            value={searchQuery}
+            value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by student name, roll number, certificate ID, event..."
             className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg px-3 py-1.5 pl-8 text-xs text-white placeholder-slate-500 transition-colors"
@@ -299,7 +299,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">Type:</span>
           <select
-            value={selectedType}
+            value={selectedType || 'All'}
             onChange={(e) => setSelectedType(e.target.value)}
             className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-cyan-500"
           >
@@ -396,17 +396,17 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                       onClick={() => {
                         setEditingCert(cert);
                         setSingleForm({
-                          student_name: cert.student_name,
-                          student_roll_no: cert.student_roll_no,
-                          student_email: cert.student_email,
-                          department: cert.department,
-                          college_name: cert.college_name,
+                          student_name: cert.student_name || '',
+                          student_roll_no: cert.student_roll_no || '',
+                          student_email: cert.student_email || '',
+                          department: cert.department || '',
+                          college_name: cert.college_name || '',
                           event_id: cert.event_id || '',
-                          event_title: cert.event_title,
-                          certificate_type: cert.certificate_type,
-                          issue_date: cert.issue_date,
-                          issued_by: cert.issued_by,
-                          designation: cert.designation,
+                          event_title: cert.event_title || '',
+                          certificate_type: cert.certificate_type || 'Participation',
+                          issue_date: cert.issue_date || '',
+                          issued_by: cert.issued_by || '',
+                          designation: cert.designation || '',
                           notes: cert.notes || '',
                         });
                         setIsCreateModalOpen(true);
@@ -446,7 +446,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <input
                   type="text"
                   required
-                  value={singleForm.student_name}
+                  value={singleForm.student_name || ''}
                   onChange={(e) => setSingleForm({ ...singleForm, student_name: e.target.value })}
                   placeholder="e.g. Rahul Sharma"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
@@ -459,7 +459,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <input
                     type="text"
                     required
-                    value={singleForm.student_roll_no}
+                    value={singleForm.student_roll_no || ''}
                     onChange={(e) => setSingleForm({ ...singleForm, student_roll_no: e.target.value })}
                     placeholder="e.g. 22K61A4201"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500 font-mono"
@@ -469,7 +469,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <label className="block text-xs font-medium text-slate-300 mb-1">Department</label>
                   <input
                     type="text"
-                    value={singleForm.department}
+                    value={singleForm.department || ''}
                     onChange={(e) => setSingleForm({ ...singleForm, department: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                   />
@@ -480,7 +480,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <label className="block text-xs font-medium text-slate-300 mb-1">Student Email</label>
                 <input
                   type="email"
-                  value={singleForm.student_email}
+                  value={singleForm.student_email || ''}
                   onChange={(e) => setSingleForm({ ...singleForm, student_email: e.target.value })}
                   placeholder="student@drkvsrit.ac.in"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
@@ -492,7 +492,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <input
                   type="text"
                   required
-                  value={singleForm.event_title}
+                  value={singleForm.event_title || ''}
                   onChange={(e) => setSingleForm({ ...singleForm, event_title: e.target.value })}
                   placeholder="e.g. NeuroHack 2026: 24-Hour AI Hackathon"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
@@ -503,7 +503,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Certificate Type</label>
                   <select
-                    value={singleForm.certificate_type}
+                    value={singleForm.certificate_type || 'Participation'}
                     onChange={(e) => setSingleForm({ ...singleForm, certificate_type: e.target.value as any })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                   >
@@ -521,7 +521,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <label className="block text-xs font-medium text-slate-300 mb-1">Issue Date</label>
                   <input
                     type="date"
-                    value={singleForm.issue_date}
+                    value={singleForm.issue_date || ''}
                     onChange={(e) => setSingleForm({ ...singleForm, issue_date: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                   />
@@ -533,7 +533,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <label className="block text-xs font-medium text-slate-300 mb-1">Issued By</label>
                   <input
                     type="text"
-                    value={singleForm.issued_by}
+                    value={singleForm.issued_by || ''}
                     onChange={(e) => setSingleForm({ ...singleForm, issued_by: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                   />
@@ -542,7 +542,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <label className="block text-xs font-medium text-slate-300 mb-1">Signer Designation</label>
                   <input
                     type="text"
-                    value={singleForm.designation}
+                    value={singleForm.designation || ''}
                     onChange={(e) => setSingleForm({ ...singleForm, designation: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                   />
@@ -553,7 +553,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <label className="block text-xs font-medium text-slate-300 mb-1">Remarks / Notes</label>
                 <textarea
                   rows={2}
-                  value={singleForm.notes}
+                  value={singleForm.notes || ''}
                   onChange={(e) => setSingleForm({ ...singleForm, notes: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                 />
@@ -599,7 +599,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                   <input
                     type="text"
                     required
-                    value={batchForm.event_title}
+                    value={batchForm.event_title || ''}
                     onChange={(e) => setBatchForm({ ...batchForm, event_title: e.target.value })}
                     placeholder="e.g. NeuroHack 2026 AI Hackathon"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500"
@@ -608,7 +608,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Certificate Type</label>
                   <select
-                    value={batchForm.certificate_type}
+                    value={batchForm.certificate_type || 'Participation'}
                     onChange={(e) => setBatchForm({ ...batchForm, certificate_type: e.target.value as any })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-indigo-500"
                   >
@@ -629,7 +629,7 @@ export function AdminCertificatesTab({ onRefreshData }: AdminCertificatesTabProp
                 <textarea
                   rows={8}
                   required
-                  value={batchForm.studentData}
+                  value={batchForm.studentData || ''}
                   onChange={(e) => setBatchForm({ ...batchForm, studentData: e.target.value })}
                   placeholder={`Rahul Sharma, 22K61A4201, rahul@drkvsrit.ac.in, CSE (AIML)\nPriya Reddy, 22K61A4202, priya@drkvsrit.ac.in, AI\nKavitha S, 22K61A4203, kavitha@drkvsrit.ac.in, CSE (AIML)`}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-indigo-500 font-mono leading-relaxed"

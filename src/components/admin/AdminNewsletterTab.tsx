@@ -231,7 +231,7 @@ export function AdminNewsletterTab({ onRefreshData }: AdminNewsletterTabProps) {
             <div className="relative flex-1 min-w-[240px]">
               <input
                 type="text"
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by email, student name, department..."
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pl-8 text-xs text-white placeholder-slate-500"
@@ -242,7 +242,7 @@ export function AdminNewsletterTab({ onRefreshData }: AdminNewsletterTabProps) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">Status:</span>
               <select
-                value={statusFilter}
+                value={statusFilter || 'All'}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
               >
@@ -367,7 +367,7 @@ export function AdminNewsletterTab({ onRefreshData }: AdminNewsletterTabProps) {
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">Target Audience</label>
                 <select
-                  value={broadcastForm.target}
+                  value={broadcastForm.target || 'All Subscribers'}
                   onChange={(e) => setBroadcastForm({ ...broadcastForm, target: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
                 >
@@ -383,7 +383,7 @@ export function AdminNewsletterTab({ onRefreshData }: AdminNewsletterTabProps) {
                 <input
                   type="text"
                   required
-                  value={broadcastForm.subject}
+                  value={broadcastForm.subject || ''}
                   onChange={(e) => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
                   placeholder="e.g. 🚨 NeuroHack 2026 Hackathon Schedule & Track Briefing Released!"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-500"
@@ -395,7 +395,7 @@ export function AdminNewsletterTab({ onRefreshData }: AdminNewsletterTabProps) {
                 <textarea
                   rows={6}
                   required
-                  value={broadcastForm.message}
+                  value={broadcastForm.message || ''}
                   onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
                   placeholder={`Greetings IntelliGenZ Innovators,\n\nWe are thrilled to announce the official schedule for our upcoming 24-hour hackathon...\n\nKey Highlights:\n- Team registrations close on Sept 20\n- Total Prize Pool: ₹50,000\n- Special Keynote by Google Developer Expert`}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-cyan-500 leading-relaxed font-sans"

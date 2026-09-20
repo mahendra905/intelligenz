@@ -66,7 +66,7 @@ export const EventsPage: React.FC<EventsPageProps> = ({
             <input
               type="text"
               placeholder="Search event title, venue..."
-              value={searchQuery}
+              value={searchQuery || ''}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded bg-[#0A0B0E] border border-[#1A1C23] text-white text-xs placeholder-[#4B5563] focus:outline-none focus:border-[#00E5FF] transition-colors font-mono"
             />

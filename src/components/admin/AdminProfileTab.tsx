@@ -142,7 +142,7 @@ export const AdminProfileTab: React.FC = () => {
                 <input
                   type="text"
                   required
-                  value={name}
+                  value={name || ''}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Lead Administrator"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
@@ -156,7 +156,7 @@ export const AdminProfileTab: React.FC = () => {
                 <input
                   type="email"
                   required
-                  value={email}
+                  value={email || ''}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. admin@drkvsrit.ac.in"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
@@ -170,7 +170,7 @@ export const AdminProfileTab: React.FC = () => {
                 <input
                   type="text"
                   required
-                  value={username}
+                  value={username || ''}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="e.g. admin"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
@@ -224,7 +224,7 @@ export const AdminProfileTab: React.FC = () => {
                 <input
                   type="password"
                   required
-                  value={currentPassword}
+                  value={currentPassword || ''}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-amber-400"
@@ -239,7 +239,7 @@ export const AdminProfileTab: React.FC = () => {
                   type="password"
                   required
                   minLength={6}
-                  value={newPassword}
+                  value={newPassword || ''}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="At least 6 characters"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-amber-400"
@@ -254,7 +254,7 @@ export const AdminProfileTab: React.FC = () => {
                   type="password"
                   required
                   minLength={6}
-                  value={confirmPassword}
+                  value={confirmPassword || ''}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat new password"
                   className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-amber-400"

@@ -12,13 +12,11 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { AnnouncementDetailPage } from './pages/AnnouncementDetailPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { TeamPage } from './pages/TeamPage';
-import { AchievementsPage } from './pages/AchievementsPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { AboutPage } from './pages/AboutPage';
 import { JoinPage } from './pages/JoinPage';
 import { ContactPage } from './pages/ContactPage';
 import { CertificatesPage } from './pages/CertificatesPage';
-import { ResourcesPage } from './pages/ResourcesPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
@@ -30,7 +28,6 @@ import {
   Announcement,
   TeamMember,
   Project,
-  Achievement,
   GalleryImage,
   SiteStats,
   SiteSettings,
@@ -48,7 +45,6 @@ export default function App() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [stats, setStats] = useState<SiteStats | undefined>(undefined);
   const [settings, setSettings] = useState<SiteSettings | undefined>(undefined);
@@ -74,7 +70,6 @@ export default function App() {
         announcementsData,
         teamData,
         projectsData,
-        achievementsData,
         galleryData,
         statsData,
         settingsData,
@@ -83,7 +78,6 @@ export default function App() {
         api.getAnnouncements(),
         api.getTeam(),
         api.getProjects(),
-        api.getAchievements(),
         api.getGallery(),
         api.getStats(),
         api.getSettings(),
@@ -93,7 +87,6 @@ export default function App() {
       setAnnouncements(announcementsData);
       setTeam(teamData);
       setProjects(projectsData);
-      setAchievements(achievementsData);
       setGallery(galleryData);
       setStats(statsData);
       setSettings(settingsData);
@@ -255,17 +248,12 @@ export default function App() {
       case '/certificates':
       case '/verify':
         return <CertificatesPage onNavigate={navigate} />;
-      case '/resources':
-      case '/learn':
-        return <ResourcesPage onNavigate={navigate} />;
-      case '/achievements':
-        return <AchievementsPage achievements={achievements} onNavigate={navigate} />;
       case '/gallery':
         return <GalleryPage gallery={gallery} onNavigate={navigate} />;
       case '/about':
         return <AboutPage onNavigate={navigate} />;
       case '/join':
-        return <JoinPage onNavigate={navigate} />;
+        return <JoinPage onNavigate={navigate} settings={settings} />;
       case '/contact':
         return <ContactPage onNavigate={navigate} />;
       case '/admin':

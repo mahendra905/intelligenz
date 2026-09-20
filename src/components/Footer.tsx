@@ -10,7 +10,6 @@ import {
   Heart,
   Globe,
   Award,
-  BookOpen,
   Send,
   CheckCircle2,
 } from 'lucide-react';
@@ -105,7 +104,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, settings }) => {
                   <input
                     type="email"
                     required
-                    value={subEmail}
+                    value={subEmail || ''}
                     onChange={(e) => setSubEmail(e.target.value)}
                     placeholder="Enter college email..."
                     className="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
@@ -192,12 +191,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, settings }) => {
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNav('/resources')} className="hover:text-[#00E5FF] transition-colors flex items-center gap-1">
-                  <BookOpen className="w-3 h-3 text-cyan-400" />
-                  <span>AI Learning Hub</span>
-                </button>
-              </li>
-              <li>
                 <button onClick={() => handleNav('/projects')} className="hover:text-[#00E5FF] transition-colors">
                   Innovations &amp; Projects
                 </button>
@@ -216,11 +209,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, settings }) => {
               Explore &amp; Engage
             </h4>
             <ul className="space-y-2 text-[11px] uppercase tracking-wider font-medium text-[#9CA3AF]">
-              <li>
-                <button onClick={() => handleNav('/achievements')} className="hover:text-[#00E5FF] transition-colors">
-                  Achievements &amp; Awards
-                </button>
-              </li>
               <li>
                 <button onClick={() => handleNav('/gallery')} className="hover:text-[#00E5FF] transition-colors">
                   Photo &amp; Video Gallery

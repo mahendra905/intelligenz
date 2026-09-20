@@ -18,7 +18,7 @@ export interface ImageUploaderProps {
   label?: string;
   required?: boolean;
   aspectRatio?: 'video' | 'banner' | 'square' | 'auto';
-  category?: 'events' | 'gallery' | 'team' | 'projects' | 'achievements' | string;
+  category?: 'events' | 'gallery' | 'team' | 'projects' | string;
   className?: string;
   helpText?: string;
   disabled?: boolean;
