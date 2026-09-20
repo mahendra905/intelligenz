@@ -1253,7 +1253,7 @@ async function startServer() {
   });
 
   // Event Registration (Public)
-  app.post('/api/events/:id/register', rateLimiter(45, 60000), (req, res) => {
+  app.post('/api/events/:id/register', rateLimiter(45, 60000), async (req, res) => {
     const eventId = req.params.id;
     const event = db.events.find((e) => e.id === eventId || e.slug === eventId);
     if (!event) {
