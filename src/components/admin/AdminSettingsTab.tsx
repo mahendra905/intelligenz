@@ -9,6 +9,7 @@ import {
   MapPin,
   Megaphone,
   UserCheck,
+  Award,
 } from 'lucide-react';
 import { SiteSettings } from '../../types';
 
@@ -31,6 +32,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
     contact_address: 'AI & Data Science Block, Room 304, DR. KVSRIT Campus, Kurnool, Andhra Pradesh - 518218',
     is_recruitment_open: true,
     join_us_status: true,
+    certificate_signing_authority: 'Dr. K. E. Sreenivasa Murthy',
+    certificate_lead_name: 'Dr. K. E. Sreenivasa Murthy',
+    certificate_lead_designation: 'Faculty Coordinator & HOD - CSE (AIML)',
     social_links: {
       github: 'https://github.com/intelligenz-club',
       linkedin: 'https://linkedin.com/company/intelligenz-club',
@@ -57,6 +61,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         is_recruitment_open: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
         join_us_status: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
         announcement_ticker: settings.announcement_ticker || '',
+        certificate_signing_authority: settings.certificate_signing_authority || settings.certificate_lead_name || 'Dr. K. E. Sreenivasa Murthy',
+        certificate_lead_name: settings.certificate_lead_name || settings.certificate_signing_authority || 'Dr. K. E. Sreenivasa Murthy',
+        certificate_lead_designation: settings.certificate_lead_designation || 'Faculty Coordinator & HOD - CSE (AIML)',
         social_links: {
           github: settings.social_links?.github || '',
           linkedin: settings.social_links?.linkedin || '',
@@ -344,6 +351,65 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                   })
                 }
                 className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Certificate Credentials & Signing Authority */}
+        <div className="p-6 rounded-2xl bg-[#0D1017] border border-[#1A1C23] space-y-4">
+          <div className="flex items-center justify-between border-b border-[#1A1C23] pb-3">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              Certificate Credentials &amp; Verification
+            </h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-400/10 text-amber-300 border border-amber-400/30 uppercase font-bold">
+              Dynamic Setting
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="cert-signing-authority-input" className="block text-xs font-semibold text-[#D1D5DB] mb-1">
+                Certificate Signing Authority / Lead Name *
+              </label>
+              <input
+                id="cert-signing-authority-input"
+                type="text"
+                required
+                placeholder="e.g. Dr. K. E. Sreenivasa Murthy"
+                value={formData.certificate_signing_authority || formData.certificate_lead_name || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({
+                    ...formData,
+                    certificate_signing_authority: val,
+                    certificate_lead_name: val,
+                  });
+                }}
+                className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-amber-400 font-medium"
+              />
+              <p className="text-[11px] text-[#9CA3AF] mt-1.5 leading-relaxed">
+                Controls the official signatory lead name rendered dynamically on all student certificates, PDF downloads, and public credential verification views without hardcoded values.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="cert-designation-input" className="block text-xs font-semibold text-[#D1D5DB] mb-1">
+                Signing Authority Designation
+              </label>
+              <input
+                id="cert-designation-input"
+                type="text"
+                placeholder="e.g. Faculty Coordinator & HOD - CSE (AIML)"
+                value={formData.certificate_lead_designation || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    certificate_lead_designation: e.target.value,
+                  })
+                }
+                className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-amber-400"
               />
             </div>
           </div>

@@ -309,6 +309,9 @@ export interface SiteSettings {
   automated_email_enabled?: boolean;
   email_sender_name?: string;
   email_sender_address?: string;
+  certificate_signing_authority?: string;
+  certificate_lead_name?: string;
+  certificate_lead_designation?: string;
   [key: string]: any;
 }
 

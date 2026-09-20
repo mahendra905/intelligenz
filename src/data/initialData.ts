@@ -28,6 +28,9 @@ export const INITIAL_SETTINGS: SiteSettings = {
   automated_email_enabled: true,
   email_sender_name: 'IntelliGenZ Club',
   email_sender_address: 'intelligenz@drkvsrit.ac.in',
+  certificate_signing_authority: 'Dr. K. E. Sreenivasa Murthy',
+  certificate_lead_name: 'Dr. K. E. Sreenivasa Murthy',
+  certificate_lead_designation: 'Faculty Coordinator & HOD - CSE (AIML)',
 };
 
 export const INITIAL_COMMUNITY_IMPACT_STATS: CommunityImpactStat[] = [
