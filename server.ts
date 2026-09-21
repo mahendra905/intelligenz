@@ -97,20 +97,26 @@ interface DatabaseSchema {
   audit_logs: AuditLog[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const isVercel = Boolean(process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isVercel ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+const SEED_DB_FILE = path.join(process.cwd(), 'data', 'db.json');
 
-// Ensure data, backup, and uploads directories exist
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-if (!fs.existsSync(BACKUPS_DIR)) {
-  fs.mkdirSync(BACKUPS_DIR, { recursive: true });
-}
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// Ensure data, backup, and uploads directories exist safely
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(BACKUPS_DIR)) {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+} catch (err: any) {
+  console.warn('[Filesystem Notice] Notice on directory initialization:', err?.message);
 }
 
 function hashPassword(password: string, salt: string): string {
@@ -144,8 +150,15 @@ function loadDatabase(): DatabaseSchema {
     const targetUsername = (process.env.ADMIN_BOOTSTRAP_USERNAME || 'superadmin').trim().toLowerCase().replace(/^["']|["']$/g, '');
     const targetPassword = (process.env.ADMIN_BOOTSTRAP_PASSWORD || 'admin1@10043').trim().replace(/^["']|["']$/g, '');
 
+    let dbFilePathToRead = '';
     if (fs.existsSync(DB_FILE)) {
-      const data = fs.readFileSync(DB_FILE, 'utf-8');
+      dbFilePathToRead = DB_FILE;
+    } else if (fs.existsSync(SEED_DB_FILE)) {
+      dbFilePathToRead = SEED_DB_FILE;
+    }
+
+    if (dbFilePathToRead) {
+      const data = fs.readFileSync(dbFilePathToRead, 'utf-8');
       const parsed = JSON.parse(data);
       let adminUsers: AdminUserRecord[] = [];
       let needsSave = false;
@@ -353,9 +366,12 @@ function loadDatabase(): DatabaseSchema {
 
 function saveDatabase(database: DatabaseSchema) {
   try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
     fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing to db.json:', err);
+  } catch (err: any) {
+    console.warn('[Database Notice] Warning writing to database file (in-memory state maintained):', err?.message);
   }
 }
 
@@ -943,6 +959,12 @@ function parseSessionDuration(val: string | undefined, fallbackMs: number): numb
   return isNaN(parsed) || parsed <= 0 ? fallbackMs : parsed;
 }
 
+const ADMIN_SECRET = (
+  process.env.ADMIN_SECRET ||
+  process.env.SESSION_SECRET ||
+  'intelligenz_admin_secret_key_drkvsrit_cse_aiml_2026'
+).trim();
+
 // Inactivity timeout (default: 15 minutes / 900,000 ms)
 const ADMIN_IDLE_TIMEOUT = parseSessionDuration(process.env.ADMIN_IDLE_TIMEOUT, 15 * 60 * 1000);
 // 24 hours absolute maximum lifetime (86,400,000 ms)
@@ -964,6 +986,28 @@ interface ActiveSession {
 }
 
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+
+function generateSignedSessionToken(userId: string, createdAt: number, expiresAt: number): string {
+  const payload = `${userId}:${createdAt}:${expiresAt}`;
+  const hmac = crypto.createHmac('sha256', ADMIN_SECRET).update(payload).digest('hex');
+  return `session_${payload}_${hmac}`;
+}
+
+function verifySignedSessionToken(token: string): { userId: string; createdAt: number; expiresAt: number } | null {
+  if (!token || !token.startsWith('session_')) return null;
+  const parts = token.slice('session_'.length).split('_');
+  if (parts.length < 2) return null;
+  const hmac = parts[parts.length - 1];
+  const payload = parts.slice(0, parts.length - 1).join('_');
+  const expectedHmac = crypto.createHmac('sha256', ADMIN_SECRET).update(payload).digest('hex');
+  if (hmac !== expectedHmac) return null;
+
+  const [userId, createdAtStr, expiresAtStr] = payload.split(':');
+  const createdAt = parseInt(createdAtStr, 10);
+  const expiresAt = parseInt(expiresAtStr, 10);
+  if (!userId || isNaN(createdAt) || isNaN(expiresAt)) return null;
+  return { userId, createdAt, expiresAt };
+}
 
 function loadSessions(): Map<string, ActiveSession> {
   const map = new Map<string, ActiveSession>();
@@ -1009,8 +1053,8 @@ function saveSessions(sessionsMap: Map<string, ActiveSession>) {
       return !isIdleExpired && !isAbsoluteExpired;
     });
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving sessions file:', err);
+  } catch (err: any) {
+    console.warn('[Sessions Notice] Could not persist sessions file to disk (in-memory state maintained):', err?.message);
   }
 }
 
@@ -1056,14 +1100,41 @@ function adminAuthMiddleware(req: AuthenticatedRequest, res: Response, next: Nex
     return;
   }
 
-  const session = activeSessions.get(token);
+  let session = activeSessions.get(token);
+  const now = Date.now();
+
+  // If not in in-memory map (e.g. across serverless lambda instances), verify signed token
+  if (!session) {
+    const verified = verifySignedSessionToken(token);
+    if (verified) {
+      const dbUser = db.admin_users.find((u) => u.id === verified.userId);
+      if (
+        dbUser &&
+        dbUser.status === 'ACTIVE' &&
+        (now - verified.createdAt) <= ADMIN_MAX_SESSION_LIFETIME &&
+        verified.expiresAt > now
+      ) {
+        session = {
+          token,
+          userId: dbUser.id,
+          username: dbUser.username,
+          email: dbUser.email,
+          role: dbUser.role,
+          createdAt: verified.createdAt,
+          lastActivityAt: now,
+          expiresAt: verified.expiresAt,
+          mustChangePassword: !!dbUser.must_change_password,
+        };
+        activeSessions.set(token, session);
+      }
+    }
+  }
+
   if (!session) {
     res.clearCookie('intelligenz_session', { path: '/' });
     res.status(401).json({ error: 'Session expired or invalid. Please sign in again.', code: 'SESSION_INVALID' });
     return;
   }
-
-  const now = Date.now();
 
   // 1. Check absolute session lifetime (24 hours default)
   const sessionCreatedAt = session.createdAt || session.lastActivityAt || now;
@@ -1136,41 +1207,38 @@ function requireRole(...allowedRoles: Array<'SUPER_ADMIN' | 'ADMIN' | 'EDITOR'>)
   };
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
-  const httpServer = http.createServer(app);
+export const app = express();
 
-  // Support up to 75MB request payload to allow 50MB binary uploads via base64 safely
-  app.use(express.json({ limit: '75mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '75mb' }));
+// Support up to 75MB request payload to allow 50MB binary uploads via base64 safely
+app.use(express.json({ limit: '75mb' }));
+app.use(express.urlencoded({ extended: true, limit: '75mb' }));
 
-  // Serve persistent uploaded images statically BEFORE Vite and SPA fallback
-  app.use('/uploads', express.static(UPLOADS_DIR));
-  app.use('/api/uploads', express.static(UPLOADS_DIR));
-  app.use(express.static(path.join(process.cwd(), 'public')));
+// Serve persistent uploaded images statically BEFORE Vite and SPA fallback
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/api/uploads', express.static(UPLOADS_DIR));
+app.use(express.static(path.join(process.cwd(), 'public')));
 
-  // Direct route for club logo asset supporting standard file names
-  app.get(['/club-logo.jpeg', '/club%20logo.jpeg', '/club logo.jpeg'], (req, res, next) => {
-    const publicPath1 = path.join(process.cwd(), 'public', 'club-logo.jpeg');
-    const publicPath2 = path.join(process.cwd(), 'public', 'club logo.jpeg');
-    const uploadPath1 = path.join(UPLOADS_DIR, 'club-logo.jpeg');
-    const uploadPath2 = path.join(UPLOADS_DIR, 'club logo.jpeg');
+// Direct route for club logo asset supporting standard file names
+app.get(['/club-logo.jpeg', '/club%20logo.jpeg', '/club logo.jpeg'], (req, res, next) => {
+  const publicPath1 = path.join(process.cwd(), 'public', 'club-logo.jpeg');
+  const publicPath2 = path.join(process.cwd(), 'public', 'club logo.jpeg');
+  const uploadPath1 = path.join(UPLOADS_DIR, 'club-logo.jpeg');
+  const uploadPath2 = path.join(UPLOADS_DIR, 'club logo.jpeg');
 
-    if (fs.existsSync(publicPath1)) return res.sendFile(publicPath1);
-    if (fs.existsSync(publicPath2)) return res.sendFile(publicPath2);
-    if (fs.existsSync(uploadPath1)) return res.sendFile(uploadPath1);
-    if (fs.existsSync(uploadPath2)) return res.sendFile(uploadPath2);
-    next();
-  });
+  if (fs.existsSync(publicPath1)) return res.sendFile(publicPath1);
+  if (fs.existsSync(publicPath2)) return res.sendFile(publicPath2);
+  if (fs.existsSync(uploadPath1)) return res.sendFile(uploadPath1);
+  if (fs.existsSync(uploadPath2)) return res.sendFile(uploadPath2);
+  next();
+});
 
-  // Request logger for API calls
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api')) {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    }
-    next();
-  });
+// Request logger for API calls
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
 
   // ==========================================
   // PUBLIC & SHARED API ROUTES
@@ -2043,113 +2111,127 @@ async function startServer() {
   // AUTHENTICATION & ACCESS CONTROL
   // ==========================================
   app.post('/api/auth/login', rateLimiter(60, 60000), (req, res) => {
-    const { username, email, identifier: rawIdentifier, password } = req.body;
-    const identifier = (rawIdentifier || username || email || '').trim().toLowerCase();
+    try {
+      const { username, email, identifier: rawIdentifier, password } = req.body || {};
+      const identifier = (rawIdentifier || username || email || '').trim().toLowerCase();
 
-    if (!identifier || !password) {
-      res.status(400).json({ error: 'Please provide your administrator email or username, and password.' });
-      return;
-    }
+      console.log(`[Auth] Administrator login attempt for identifier: "${identifier}"`);
+      console.log(`[Auth Diagnostics] ADMIN_SECRET configured: ${Boolean(process.env.ADMIN_SECRET || process.env.SESSION_SECRET)}, Bootstrap Admin configured: ${Boolean(process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_BOOTSTRAP_EMAIL)}, Database admins count: ${db.admin_users.length}`);
 
-    // Find admin user in database by username or email
-    const adminUser = db.admin_users.find(
-      (u) =>
-        u.username.toLowerCase() === identifier ||
-        u.email.toLowerCase() === identifier
-    );
+      if (!identifier || !password) {
+        res.status(400).json({ error: 'Please provide your administrator email or username, and password.' });
+        return;
+      }
 
-    if (!adminUser) {
-      logAdminAction('Admin Login Failed', 'Auth', identifier, `Failed login attempt for unknown account '${identifier}'`, identifier, req);
-      res.status(401).json({ error: 'Invalid administrator credentials.' });
-      return;
-    }
+      // Find admin user in database by username or email
+      const adminUser = db.admin_users.find(
+        (u) =>
+          u.username.toLowerCase() === identifier ||
+          u.email.toLowerCase() === identifier
+      );
 
-    if (adminUser.status === 'INACTIVE') {
-      logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' is marked INACTIVE`, adminUser.email, req);
-      res.status(403).json({ error: 'Your administrator account is currently inactive. Please contact the Super Administrator.' });
-      return;
-    }
+      if (!adminUser) {
+        console.warn(`[Auth] Login rejected: Unknown administrator identifier "${identifier}".`);
+        logAdminAction('Admin Login Failed', 'Auth', identifier, `Failed login attempt for unknown account '${identifier}'`, identifier, req);
+        res.status(401).json({ error: 'Invalid administrator credentials.' });
+        return;
+      }
 
-    if (adminUser.status === 'REVOKED') {
-      logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' access is REVOKED`, adminUser.email, req);
-      res.status(403).json({ error: 'Your administrator access has been revoked. Contact the department administration.' });
-      return;
-    }
+      if (adminUser.status === 'INACTIVE') {
+        console.warn(`[Auth] Login rejected: Account "${adminUser.username}" is INACTIVE.`);
+        logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' is marked INACTIVE`, adminUser.email, req);
+        res.status(403).json({ error: 'Your administrator account is currently inactive. Please contact the Super Administrator.' });
+        return;
+      }
 
-    if (adminUser.status !== 'ACTIVE') {
-      res.status(403).json({ error: 'Invalid administrator credentials.' });
-      return;
-    }
+      if (adminUser.status === 'REVOKED') {
+        console.warn(`[Auth] Login rejected: Account "${adminUser.username}" is REVOKED.`);
+        logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' access is REVOKED`, adminUser.email, req);
+        res.status(403).json({ error: 'Your administrator access has been revoked. Contact the department administration.' });
+        return;
+      }
 
-    // Verify PBKDF2 password hash
-    const calculatedHash = hashPassword(password, adminUser.salt);
-    if (calculatedHash !== adminUser.password_hash) {
-      logAdminAction('Admin Login Failed', 'Auth', adminUser.id, `Failed login attempt: Incorrect password for '${adminUser.username}'`, adminUser.email, req);
-      res.status(401).json({ error: 'Invalid administrator credentials.' });
-      return;
-    }
+      if (adminUser.status !== 'ACTIVE') {
+        res.status(403).json({ error: 'Invalid administrator credentials.' });
+        return;
+      }
 
-    // Update login timestamp
-    adminUser.last_login_at = new Date().toISOString();
-    adminUser.updated_at = new Date().toISOString();
-    saveDatabase(db);
+      // Verify PBKDF2 password hash
+      const calculatedHash = hashPassword(password, adminUser.salt);
+      if (calculatedHash !== adminUser.password_hash) {
+        console.warn(`[Auth] Login rejected: Incorrect password for "${adminUser.username}".`);
+        logAdminAction('Admin Login Failed', 'Auth', adminUser.id, `Failed login attempt: Incorrect password for '${adminUser.username}'`, adminUser.email, req);
+        res.status(401).json({ error: 'Invalid administrator credentials.' });
+        return;
+      }
 
-    // Invalidate any previous sessions for this administrator so each login starts with a fresh, independent session
-    invalidateUserSessions(adminUser.id);
+      // Update login timestamp
+      adminUser.last_login_at = new Date().toISOString();
+      adminUser.updated_at = new Date().toISOString();
+      saveDatabase(db);
 
-    // Issue cryptographically secure session token with independent 24-hour maximum lifetime
-    const now = Date.now();
-    const sessionToken = `session_${crypto.randomBytes(32).toString('hex')}`;
-    const expiresAt = now + ADMIN_MAX_SESSION_LIFETIME;
-    activeSessions.set(sessionToken, {
-      token: sessionToken,
-      userId: adminUser.id,
-      username: adminUser.username,
-      email: adminUser.email,
-      role: adminUser.role,
-      createdAt: now,
-      lastActivityAt: now,
-      expiresAt,
-      mustChangePassword: !!adminUser.must_change_password,
-    });
-    saveSessions(activeSessions);
+      // Invalidate any previous sessions for this administrator so each login starts with a fresh, independent session
+      invalidateUserSessions(adminUser.id);
 
-    // Set secure HTTP-only cookie with same max age
-    res.cookie('intelligenz_session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: ADMIN_MAX_SESSION_LIFETIME,
-      path: '/',
-    });
-
-    logAdminAction(
-      'Admin Login Success',
-      'Auth',
-      adminUser.id,
-      `Administrator ${adminUser.name} (${adminUser.role}) signed in successfully`,
-      adminUser.email,
-      req
-    );
-
-    res.json({
-      success: true,
-      token: sessionToken,
-      sessionStart: now,
-      idleTimeout: ADMIN_IDLE_TIMEOUT,
-      maxLifetime: ADMIN_MAX_SESSION_LIFETIME,
-      warningDuration: ADMIN_SESSION_WARNING,
-      mustChangePassword: !!adminUser.must_change_password,
-      user: {
-        id: adminUser.id,
-        name: adminUser.name,
+      // Issue cryptographically secure signed session token with independent 24-hour maximum lifetime
+      const now = Date.now();
+      const expiresAt = now + ADMIN_MAX_SESSION_LIFETIME;
+      const sessionToken = generateSignedSessionToken(adminUser.id, now, expiresAt);
+      activeSessions.set(sessionToken, {
+        token: sessionToken,
+        userId: adminUser.id,
         username: adminUser.username,
         email: adminUser.email,
         role: adminUser.role,
-        status: adminUser.status,
+        createdAt: now,
+        lastActivityAt: now,
+        expiresAt,
         mustChangePassword: !!adminUser.must_change_password,
-      },
-    });
+      });
+      saveSessions(activeSessions);
+
+      // Set secure HTTP-only cookie with same max age
+      res.cookie('intelligenz_session', sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: ADMIN_MAX_SESSION_LIFETIME,
+        path: '/',
+      });
+
+      console.log(`[Auth] Admin login succeeded for "${adminUser.username}" (${adminUser.role}).`);
+
+      logAdminAction(
+        'Admin Login Success',
+        'Auth',
+        adminUser.id,
+        `Administrator ${adminUser.name} (${adminUser.role}) signed in successfully`,
+        adminUser.email,
+        req
+      );
+
+      res.json({
+        success: true,
+        token: sessionToken,
+        sessionStart: now,
+        idleTimeout: ADMIN_IDLE_TIMEOUT,
+        maxLifetime: ADMIN_MAX_SESSION_LIFETIME,
+        warningDuration: ADMIN_SESSION_WARNING,
+        mustChangePassword: !!adminUser.must_change_password,
+        user: {
+          id: adminUser.id,
+          name: adminUser.name,
+          username: adminUser.username,
+          email: adminUser.email,
+          role: adminUser.role,
+          status: adminUser.status,
+          mustChangePassword: !!adminUser.must_change_password,
+        },
+      });
+    } catch (err: any) {
+      console.error('[Auth Error] Uncaught error in login handler:', err?.message || err);
+      res.status(500).json({ error: 'An unexpected server error occurred during authentication.' });
+    }
   });
 
   app.get('/api/auth/session-config', (_req, res) => {
@@ -4776,36 +4858,50 @@ CREATE POLICY "Allow public contact message submit" ON public.contact_messages F
     res.status(404).json({ error: 'API endpoint not found', path: req.path });
   });
 
-  // Vite middleware for development vs static build in production
-  if (process.env.NODE_ENV !== 'production') {
-    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: isHmrDisabled
-          ? false
-          : {
-              server: httpServer,
-            },
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  export async function startServer() {
+    // In serverless environments like Vercel, the app is exported directly and listen is not needed
+    if (isVercel) {
+      console.log('[Serverless] IntelliGenZ API initialized for serverless runtime.');
+      return;
+    }
+
+    const PORT = 3000;
+    const httpServer = http.createServer(app);
+
+    // Vite middleware for development vs static build in production
+    if (process.env.NODE_ENV !== 'production') {
+      const isHmrDisabled = process.env.DISABLE_HMR === 'true';
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: isHmrDisabled
+            ? false
+            : {
+                server: httpServer,
+              },
+        },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`⚡ INTELLIGENZ Club Server running on port ${PORT} [http://0.0.0.0:${PORT}]`);
+      console.log(`🏛️ Institution: DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY`);
+      console.log(`🤖 Department: Department of CSE (AIML) & AI`);
     });
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`⚡ INTELLIGENZ Club Server running on port ${PORT} [http://0.0.0.0:${PORT}]`);
-    console.log(`🏛️ Institution: DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY`);
-    console.log(`🤖 Department: Department of CSE (AIML) & AI`);
-  });
-}
+  export default app;
 
-startServer().catch((err) => {
-  console.error('Fatal server startup error:', err);
-});
+  if (!isVercel) {
+    startServer().catch((err) => {
+      console.error('Fatal server startup error:', err);
+    });
+  }

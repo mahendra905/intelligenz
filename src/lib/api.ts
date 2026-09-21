@@ -118,6 +118,38 @@ const secureFetch = async (...args: Parameters<typeof globalThis.fetch>): Promis
 // Shadow fetch for all API methods in this module
 const fetch = secureFetch;
 
+async function safeJson<T = any>(res: Response, fallbackError: string = 'Operation failed'): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  let data: any = null;
+
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    try {
+      const text = await res.text();
+      if (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('The page')) {
+        throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'}). Please check backend connection.`);
+      }
+      if (text.trim()) {
+        throw new Error(text.slice(0, 160));
+      }
+    } catch (err: any) {
+      throw new Error(err.message || fallbackError);
+    }
+  }
+
+  if (!res.ok) {
+    const message = data?.error || data?.message || fallbackError;
+    throw new Error(message);
+  }
+
+  return data as T;
+}
+
 function authHeaders(): Record<string, string> {
   const token = authStorage.getToken();
   return {
@@ -286,8 +318,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Invalid administrator credentials.');
+    const data = await safeJson(res, 'Invalid administrator credentials.');
     authStorage.setToken(data.token);
     authStorage.setUser(data.user);
     adminSessionCoordinator.resetSessionOnLogin(data.sessionStart || Date.now());
@@ -319,7 +350,7 @@ export const api = {
         authStorage.clearToken();
         return false;
       }
-      const data = await res.json();
+      const data = await safeJson(res, 'Verification failed');
       if (data.valid && data.user) {
         authStorage.setUser(data.user);
         if (data.sessionStart && typeof data.sessionStart === 'number') {
