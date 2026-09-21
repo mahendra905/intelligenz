@@ -31,7 +31,8 @@
     "email_sender_address": "intelligenz@drkvsrit.ac.in",
     "certificate_signing_authority": "Dr. K. E. Sreenivasa Murthy",
     "certificate_lead_name": "Dr. K. E. Sreenivasa Murthy",
-    "certificate_lead_designation": "Faculty Coordinator & HOD - CSE (AIML)"
+    "certificate_lead_designation": "Faculty Coordinator & HOD - CSE (AIML)",
+    "site_tagline": "Official Technical Club"
   },
   "stats": {
     "students_reached": "650+",
@@ -103,137 +104,7 @@
       "updated_by": "Super Admin"
     }
   ],
-  "events": [
-    {
-      "id": "evt-neurohack-2026",
-      "title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "slug": "neurohack-2026-ai-hackathon",
-      "short_description": "Build real-world AI, Machine Learning, and Computer Vision solutions in an intense 24-hour hackathon with cash prizes up to ₹50,000.",
-      "description": "NeuroHack 2026 is the flagship annual hackathon organized by the IntelliGenZ Club, Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology.\n\nStudents from engineering colleges across the state are invited to brainstorm, prototype, and build production-ready applications across 4 tracks:\n1. **Generative AI & LLM Agents**\n2. **Healthcare & Vision AI**\n3. **Smart Campus & Automation**\n4. **Open Innovation in Deep Tech**\n\nParticipants will receive mentorship from top industry engineers, free food, energy drinks, cloud compute credits, official participation certificates, and cash awards for winning teams.",
-      "event_image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80",
-      "date": "2026-09-25",
-      "start_time": "09:00 AM",
-      "end_time": "09:00 AM (+1 Day)",
-      "venue": "Main Auditorium & Advanced AI Labs, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-      "category": "Hackathon",
-      "speaker": "Er. Rajesh Varma",
-      "speaker_bio": "Principal AI Architect at TechCorp Labs & Ex-Google Developer Expert",
-      "maximum_participants": 200,
-      "current_participants": 148,
-      "status": "Registration Open",
-      "featured": true,
-      "highlights": [
-        "₹50,000 Total Prize Pool",
-        "24-Hour continuous high-speed internet & power backup",
-        "Direct interview opportunities with sponsoring startups",
-        "Cloud compute credits sponsored for all qualified teams"
-      ],
-      "created_at": "2026-08-15T10:00:00Z",
-      "updated_at": "2026-08-25T14:30:00Z",
-      "participation_type": "TEAM",
-      "min_team_size": 2,
-      "max_team_size": 4
-    },
-    {
-      "id": "evt-genai-masterclass",
-      "title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "slug": "genai-autonomous-agents-workshop",
-      "short_description": "Hands-on technical workshop on creating multimodal AI agents, retrieval augmented generation (RAG), and deploying intelligent web apps.",
-      "description": "Join us for a rigorous 1-day practical workshop hosted by the IntelliGenZ technical team. \n\nLearn how to harness cutting-edge foundation models, build robust RAG pipelines with vector databases, and deploy tool-calling autonomous AI agents. All participants will build and deploy a live working project during the session.",
-      "event_image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80",
-      "date": "2026-09-12",
-      "start_time": "10:00 AM",
-      "end_time": "04:30 PM",
-      "venue": "Seminar Hall 2, CSE Block, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-      "category": "Workshop",
-      "speaker": "Dr. Priya Sundaram",
-      "speaker_bio": "Senior Research Scientist in NLP and Generative AI systems",
-      "maximum_participants": 90,
-      "current_participants": 92,
-      "status": "Registration Open",
-      "featured": true,
-      "highlights": [
-        "Live code walkthrough and Colab notebooks provided",
-        "Hands-on building of RAG with Vector Search",
-        "Official Certificate of Completion from Department of CSE (AIML)"
-      ],
-      "created_at": "2026-08-20T08:00:00Z",
-      "updated_at": "2026-08-28T09:15:00Z",
-      "participation_type": "SOLO",
-      "min_team_size": 1,
-      "max_team_size": 1
-    },
-    {
-      "id": "evt-vision-robotics",
-      "title": "Edge AI & Computer Vision with OpenCV and Embedded Systems",
-      "slug": "edge-ai-computer-vision-bootcamp",
-      "short_description": "Discover how to run real-time object detection and facial recognition models on micro-controllers and edge hardware.",
-      "description": "A specialized bootcamp on embedded intelligence, robotic vision, and low-latency computer vision pipelines for real-time edge computing.",
-      "event_image": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80",
-      "date": "2026-10-08",
-      "start_time": "01:30 PM",
-      "end_time": "05:30 PM",
-      "venue": "Robotics & Embedded Systems Lab, 3rd Floor",
-      "category": "AI Bootcamp",
-      "speaker": "Prof. K. Venkatesh",
-      "speaker_bio": "Lead Researcher in Edge Computing & Embedded Systems",
-      "maximum_participants": 60,
-      "current_participants": 34,
-      "status": "Upcoming",
-      "featured": false,
-      "highlights": [
-        "Hardware kits supplied for live experimentations",
-        "Deploying YOLO models to Raspberry Pi & Jetson Nano",
-        "Open Q&A on robotics competitions"
-      ],
-      "created_at": "2026-08-22T11:00:00Z",
-      "updated_at": "2026-08-22T11:00:00Z",
-      "participation_type": "SOLO",
-      "min_team_size": 1,
-      "max_team_size": 1
-    },
-    {
-      "id": "evt-code-clash-2026",
-      "title": "CodeClash 2026: Algorithmic Duel & Speed Programming",
-      "slug": "code-clash-algorithmic-duel",
-      "short_description": "Competitive programming tournament featuring data structures, dynamic programming, and algorithm optimization battles.",
-      "description": "IntelliGenZ Club's monthly competitive programming arena. Speed, precision, and optimal complexity decide the winners.",
-      "event_image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
-      "date": "2026-08-10",
-      "start_time": "02:00 PM",
-      "end_time": "05:00 PM",
-      "venue": "Computer Center Lab 4",
-      "category": "Coding Contest",
-      "maximum_participants": 120,
-      "current_participants": 118,
-      "status": "Completed",
-      "featured": false,
-      "results": "Top 3 winners felicitated with shields and certificates by the Head of Department.",
-      "winners": [
-        {
-          "position": "1st Place",
-          "name": "M. Sumanth (CSE AIML 3rd Year)",
-          "team_name": "BitMasters"
-        },
-        {
-          "position": "2nd Place",
-          "name": "G. Keerthana (CSE 2nd Year)",
-          "team_name": "AlgoHacks"
-        },
-        {
-          "position": "3rd Place",
-          "name": "K. Sai Teja (AI 3rd Year)",
-          "team_name": "Matrix"
-        }
-      ],
-      "certificates_available": true,
-      "created_at": "2026-07-28T09:00:00Z",
-      "updated_at": "2026-08-11T16:00:00Z",
-      "participation_type": "SOLO",
-      "min_team_size": 1,
-      "max_team_size": 1
-    }
-  ],
+  "events": [],
   "announcements": [
     {
       "id": "ann-recruitment-2026",
@@ -578,45 +449,48 @@
       "created_at": "2026-09-21T11:43:37.868Z"
     }
   ],
-  "registrations": [
+  "registrations": [],
+  "messages": [
     {
-      "id": "reg-genai-104215",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "full_name": "Rohan Verma",
-      "email": "rohan.verma@example.com",
-      "phone": "9876543211",
-      "department": "CSE (AIML)",
-      "year": "3rd Year",
-      "roll_number": "22K61A4215",
-      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-      "participation_type": "SOLO",
-      "status": "Attended",
-      "created_at": "2026-09-03T13:05:51.561Z",
-      "ticket_code": "TKT-104215",
-      "qr_token": "qrat_genai104215_104215",
-      "qr_payload": "ATTENDANCE:qrat_genai104215_104215"
+      "id": "msg-1790016396260-we9jd9",
+      "name": "MOCK_TEST_2026 Visitor",
+      "email": "mock_visitor_2026@drkvsrit.ac.in",
+      "subject": "MOCK_TEST_2026 Inquiry",
+      "message": "Mock test message body.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T18:46:36.260Z"
     },
     {
-      "id": "reg-neuro-104230",
-      "event_id": "evt-neurohack-2026",
-      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "full_name": "Ananya Reddy",
-      "email": "ananya.reddy@example.com",
-      "phone": "9876543212",
-      "department": "CSE (AI)",
-      "year": "2nd Year",
-      "roll_number": "22K61A4230",
-      "college": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-      "participation_type": "SOLO",
-      "status": "Confirmed",
-      "created_at": "2026-09-03T13:05:51.561Z",
-      "ticket_code": "TKT-104230",
-      "qr_token": "qrat_neuro104230_104230",
-      "qr_payload": "ATTENDANCE:qrat_neuro104230_104230"
-    }
-  ],
-  "messages": [
+      "id": "msg-1790016351312-ax8gnt",
+      "name": "MOCK_TEST_2026 Visitor",
+      "email": "mock_visitor_2026@drkvsrit.ac.in",
+      "subject": "MOCK_TEST_2026 Inquiry",
+      "message": "Mock test message body.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T18:45:51.312Z"
+    },
+    {
+      "id": "msg-1790016339641-otuanl",
+      "name": "MOCK_TEST_2026 Visitor",
+      "email": "mock_visitor_2026@drkvsrit.ac.in",
+      "subject": "MOCK_TEST_2026 Inquiry",
+      "message": "Mock test message body.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T18:45:39.641Z"
+    },
+    {
+      "id": "msg-1790016259699-rlt8gp",
+      "name": "MOCK_TEST_2026 Visitor",
+      "email": "mock_visitor_2026@drkvsrit.ac.in",
+      "subject": "MOCK_TEST_2026 Inquiry",
+      "message": "Mock test message body.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T18:44:19.699Z"
+    },
     {
       "id": "msg-1789991017863-ehwcku",
       "name": "Inquiry Person",
@@ -650,8 +524,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-21T11:43:34.529Z",
-      "last_login_at": "2026-09-21T11:43:34.529Z",
+      "updated_at": "2026-09-21T18:46:28.875Z",
+      "last_login_at": "2026-09-21T18:46:28.875Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -726,6 +600,42 @@
   ],
   "newsletter_subscribers": [
     {
+      "id": "sub-1790016396273-9h3er",
+      "email": "mock_sub_1790016396271@drkvsrit.ac.in",
+      "name": "MOCK_TEST_2026 Subscriber",
+      "department": "",
+      "subscribed_at": "2026-09-21T18:46:36.273Z",
+      "status": "Active",
+      "source": "Website"
+    },
+    {
+      "id": "sub-1790016387301-eaez9",
+      "email": "mock_sub_1790016387296@drkvsrit.ac.in",
+      "name": "MOCK_TEST_2026 Subscriber",
+      "department": "",
+      "subscribed_at": "2026-09-21T18:46:27.301Z",
+      "status": "Active",
+      "source": "Website"
+    },
+    {
+      "id": "sub-1790016351321-2efmy",
+      "email": "mock_sub_1790016351319@drkvsrit.ac.in",
+      "name": "MOCK_TEST_2026 Subscriber",
+      "department": "",
+      "subscribed_at": "2026-09-21T18:45:51.322Z",
+      "status": "Active",
+      "source": "Website"
+    },
+    {
+      "id": "sub-1790016339650-a3oyr",
+      "email": "mock_sub_1790016339649@drkvsrit.ac.in",
+      "name": "MOCK_TEST_2026 Subscriber",
+      "department": "",
+      "subscribed_at": "2026-09-21T18:45:39.650Z",
+      "status": "Active",
+      "source": "Website"
+    },
+    {
       "id": "sub-1",
       "email": "ai.student1@drkvsrit.ac.in",
       "name": "Ravi Teja",
@@ -754,117 +664,798 @@
     }
   ],
   "newsletter_broadcasts": [],
-  "checkins": [
-    {
-      "id": "chk-1789902367311-d31bc",
-      "registration_id": "reg-1789902269728-wov23t",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "ramesh",
-      "roll_number": "24FH1A3303",
-      "email": "ramesh@gmail.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-20T11:06:07.311Z",
-      "checkin_method": "Roster Action"
-    },
-    {
-      "id": "chk-1789902341371-kjped",
-      "registration_id": "reg-1789900931156-dhjqfm",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "mahi",
-      "roll_number": "24FH1A3315",
-      "email": "mahi678@gmail.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-20T11:05:41.371Z",
-      "checkin_method": "Roster Action"
-    },
-    {
-      "id": "chk-1788443535282-p09ui",
-      "registration_id": "reg-1788443535269-mu0fym",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "Rahul Sharma",
-      "roll_number": "24GEN7972",
-      "email": "rahul.1788443535267@gmail.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:52:15.282Z",
-      "checkin_method": "QR Code"
-    },
-    {
-      "id": "chk-1788443259354-fo7sc",
-      "registration_id": "reg-1788443259346-p9hmgu",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "Aman Gupta",
-      "roll_number": "24GEN8961",
-      "email": "aman1788443259344@test.com",
-      "department": "CSE (AI)",
-      "checked_in_at": "2026-09-03T13:47:39.354Z",
-      "checkin_method": "QR Code"
-    },
-    {
-      "id": "chk-1788443119778-5adie",
-      "registration_id": "reg-1788443013627-ktx0r5",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "hitesh",
-      "roll_number": "24FH1A3360",
-      "email": "hitesh@gmail.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:45:19.778Z",
-      "checkin_method": "QR Code Upload"
-    },
-    {
-      "id": "chk-1788441279656-ow5df",
-      "registration_id": "reg-genai-104215",
-      "event_id": "evt-genai-masterclass",
-      "event_title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
-      "participant_name": "Rohan Verma",
-      "roll_number": "22K61A4215",
-      "email": "rohan.verma@example.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:14:39.656Z",
-      "checkin_method": "Roster Action"
-    },
-    {
-      "id": "chk-1788441255288-ow4l4",
-      "registration_id": "reg-neuro-104201",
-      "event_id": "evt-neurohack-2026",
-      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "participant_name": "Aarav Sharma",
-      "roll_number": "22K61A4201",
-      "email": "aarav.sharma@example.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:14:15.288Z",
-      "checkin_method": "Roster Action"
-    },
-    {
-      "id": "chk-1788441208176-j7w7s",
-      "registration_id": "reg-1788441074427-571si5",
-      "event_id": "evt-neurohack-2026",
-      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "participant_name": "mahendra",
-      "roll_number": "24FH1A3360",
-      "email": "mahi@gamil.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:13:28.176Z",
-      "checkin_method": "Rapid Scanner"
-    },
-    {
-      "id": "chk-1788441189519-3eqd4",
-      "registration_id": "reg-1788441074427-571si5",
-      "event_id": "evt-neurohack-2026",
-      "event_title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
-      "participant_name": "ajay",
-      "roll_number": "24FH1A3325",
-      "email": "ajay@gmail.com",
-      "department": "CSE (AIML)",
-      "checked_in_at": "2026-09-03T13:13:09.519Z",
-      "checkin_method": "Admin Terminal"
-    }
-  ],
+  "checkins": [],
   "audit_logs": [
+    {
+      "id": "log-1790016396279-7v6hg",
+      "action": "Gallery Item Deleted",
+      "entity_type": "GalleryImage",
+      "entity_id": "gal-1790016396276",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted gallery photo \"MOCK_TEST_2026 Gallery Photo\"",
+      "timestamp": "2026-09-21T18:46:36.279Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396247-9xcbc",
+      "action": "Certificate Revoked & Deleted",
+      "entity_type": "Certificate",
+      "entity_id": "cert-1790016396241-nl7hs",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin revoked certificate MOCK_CERT_1790016396240 issued to MOCK_TEST_2026 Student",
+      "timestamp": "2026-09-21T18:46:36.247Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396237-xuf2h",
+      "action": "Project Deleted",
+      "entity_type": "Project",
+      "entity_id": "proj-1790016396233",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted project \"MOCK_TEST_2026 Autonomous Drone Vision\"",
+      "timestamp": "2026-09-21T18:46:36.237Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396229-4vqby",
+      "action": "Announcement Deleted",
+      "entity_type": "Announcement",
+      "entity_id": "ann-1790016396222",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted announcement \"MOCK_TEST_2026 UPDATED Announcement Title\"",
+      "timestamp": "2026-09-21T18:46:36.229Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396218-oimma",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016396209",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:36.218Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396213-wmag9",
+      "action": "Team Member Updated",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016396209",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin updated team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:36.213Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396210-zg1ye",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016396209",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member MOCK_TEST_2026 Member (AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:36.210Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396206-t27i6",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016388965",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 Registration Target Event\"",
+      "timestamp": "2026-09-21T18:46:36.206Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016396203-wc81q",
+      "action": "Registration Deleted",
+      "entity_type": "EventRegistration",
+      "entity_id": "reg-1790016388971-vogz2o",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted registration for MOCK_TEST_2026 Candidate (TKT-VOGZ2O)",
+      "timestamp": "2026-09-21T18:46:36.203Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388966-mppnm",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016388965",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 Registration Target Event\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:46:28.966Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388954-bjbuy",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016388933",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 UPDATED AI Summit\"",
+      "timestamp": "2026-09-21T18:46:28.954Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388945-7dodr",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016388933",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"MOCK_TEST_2026 UPDATED AI Summit\" (Status: Registration Open, Type: SOLO)",
+      "timestamp": "2026-09-21T18:46:28.945Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388934-6wh5c",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016388933",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 AI Summit\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:46:28.934Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388877-5hhp3",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T18:46:28.877Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016388870-qmmkq",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-21T18:46:28.870Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387313-ias96",
+      "action": "Gallery Item Deleted",
+      "entity_type": "GalleryImage",
+      "entity_id": "gal-1790016387308",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted gallery photo \"MOCK_TEST_2026 Gallery Photo\"",
+      "timestamp": "2026-09-21T18:46:27.313Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387278-xudk0",
+      "action": "Certificate Revoked & Deleted",
+      "entity_type": "Certificate",
+      "entity_id": "cert-1790016387270-274nn",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin revoked certificate MOCK_CERT_1790016387268 issued to MOCK_TEST_2026 Student",
+      "timestamp": "2026-09-21T18:46:27.278Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387264-klxbj",
+      "action": "Project Deleted",
+      "entity_type": "Project",
+      "entity_id": "proj-1790016387259",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted project \"MOCK_TEST_2026 Autonomous Drone Vision\"",
+      "timestamp": "2026-09-21T18:46:27.264Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387254-fypf7",
+      "action": "Announcement Deleted",
+      "entity_type": "Announcement",
+      "entity_id": "ann-1790016387245",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted announcement \"MOCK_TEST_2026 UPDATED Announcement Title\"",
+      "timestamp": "2026-09-21T18:46:27.254Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387240-tzh6t",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016387226",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:27.240Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387232-1wzqs",
+      "action": "Team Member Updated",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016387226",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin updated team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:27.232Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387227-bznpl",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016387226",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member MOCK_TEST_2026 Member (AI Research Lead)",
+      "timestamp": "2026-09-21T18:46:27.227Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387221-xco1d",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016380108",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 Registration Target Event\"",
+      "timestamp": "2026-09-21T18:46:27.221Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016387218-mcu6l",
+      "action": "Registration Deleted",
+      "entity_type": "EventRegistration",
+      "entity_id": "reg-1790016380112-u27b3t",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted registration for MOCK_TEST_2026 Candidate (TKT-U27B3T)",
+      "timestamp": "2026-09-21T18:46:27.218Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380109-fltei",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016380108",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 Registration Target Event\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:46:20.109Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380101-n1fen",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016380087",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 UPDATED AI Summit\"",
+      "timestamp": "2026-09-21T18:46:20.101Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380093-a61ci",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016380087",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"MOCK_TEST_2026 UPDATED AI Summit\" (Status: Registration Open, Type: SOLO)",
+      "timestamp": "2026-09-21T18:46:20.093Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380087-q8luu",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016380087",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 AI Summit\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:46:20.087Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380070-nf0dm",
+      "action": "Certificate Revoked & Deleted",
+      "entity_type": "Certificate",
+      "entity_id": "MOCK_TEST_CERT_ID_1790016259654",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin revoked certificate MOCK_CERT_1790016259654 issued to MOCK_TEST_2026 Student",
+      "timestamp": "2026-09-21T18:46:20.070Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380067-f19vc",
+      "action": "Project Deleted",
+      "entity_type": "Project",
+      "entity_id": "proj-1790016259649",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted project \"MOCK_TEST_2026 Autonomous Drone Vision\"",
+      "timestamp": "2026-09-21T18:46:20.067Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380062-63c3p",
+      "action": "Announcement Deleted",
+      "entity_type": "Announcement",
+      "entity_id": "ann-1790016259640",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted announcement \"MOCK_TEST_2026 Announcement Title\"",
+      "timestamp": "2026-09-21T18:46:20.062Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380059-yko3c",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016259599",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 AI Summit\"",
+      "timestamp": "2026-09-21T18:46:20.059Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380056-oon4p",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016259612",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 Registration Target Event\"",
+      "timestamp": "2026-09-21T18:46:20.056Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380029-qk2bq",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T18:46:20.029Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016380023-tur6j",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-21T18:46:20.023Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351330-gqze8",
+      "action": "Gallery Item Deleted",
+      "entity_type": "GalleryImage",
+      "entity_id": "gal-1790016351325",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted gallery photo \"MOCK_TEST_2026 Gallery Photo\"",
+      "timestamp": "2026-09-21T18:45:51.330Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351299-b4szh",
+      "action": "Certificate Revoked & Deleted",
+      "entity_type": "Certificate",
+      "entity_id": "cert-1790016351291-aebu5",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin revoked certificate MOCK_CERT_1790016351290 issued to MOCK_TEST_2026 Student",
+      "timestamp": "2026-09-21T18:45:51.299Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351282-1ccp4",
+      "action": "Project Deleted",
+      "entity_type": "Project",
+      "entity_id": "proj-1790016351278",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted project \"MOCK_TEST_2026 Autonomous Drone Vision\"",
+      "timestamp": "2026-09-21T18:45:51.282Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351273-pr06p",
+      "action": "Announcement Deleted",
+      "entity_type": "Announcement",
+      "entity_id": "ann-1790016351265",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted announcement \"MOCK_TEST_2026 UPDATED Announcement Title\"",
+      "timestamp": "2026-09-21T18:45:51.273Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351260-i051e",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016351250",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:51.260Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351254-cyxje",
+      "action": "Team Member Updated",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016351250",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin updated team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:51.254Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351251-4qcr4",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016351250",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member MOCK_TEST_2026 Member (AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:51.251Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351246-747t2",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016345454",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 Registration Target Event\"",
+      "timestamp": "2026-09-21T18:45:51.246Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016351244-kos1i",
+      "action": "Registration Deleted",
+      "entity_type": "EventRegistration",
+      "entity_id": "reg-1790016345458-q3hjfp",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted registration for MOCK_TEST_2026 Candidate (TKT-Q3HJFP)",
+      "timestamp": "2026-09-21T18:45:51.244Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345455-pxrnx",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016345454",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 Registration Target Event\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:45:45.455Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345450-t8sg7",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016345437",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 UPDATED AI Summit\"",
+      "timestamp": "2026-09-21T18:45:45.450Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345445-hmlq0",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016345437",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"MOCK_TEST_2026 UPDATED AI Summit\" (Status: Registration Open, Type: SOLO)",
+      "timestamp": "2026-09-21T18:45:45.445Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345438-80pw5",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016345437",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 AI Summit\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:45:45.438Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345413-pym5s",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T18:45:45.413Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016345408-3jkz1",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-21T18:45:45.408Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339658-kp98f",
+      "action": "Gallery Item Deleted",
+      "entity_type": "GalleryImage",
+      "entity_id": "gal-1790016339654",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted gallery photo \"MOCK_TEST_2026 Gallery Photo\"",
+      "timestamp": "2026-09-21T18:45:39.658Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339602-9bmee",
+      "action": "Certificate Revoked & Deleted",
+      "entity_type": "Certificate",
+      "entity_id": "cert-1790016339593-fss81",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin revoked certificate MOCK_CERT_1790016339591 issued to MOCK_TEST_2026 Student",
+      "timestamp": "2026-09-21T18:45:39.602Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339584-5dr2w",
+      "action": "Project Deleted",
+      "entity_type": "Project",
+      "entity_id": "proj-1790016339580",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted project \"MOCK_TEST_2026 Autonomous Drone Vision\"",
+      "timestamp": "2026-09-21T18:45:39.584Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339573-dq0ha",
+      "action": "Announcement Deleted",
+      "entity_type": "Announcement",
+      "entity_id": "ann-1790016339562",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted announcement \"MOCK_TEST_2026 UPDATED Announcement Title\"",
+      "timestamp": "2026-09-21T18:45:39.573Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339543-57o40",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016339521",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:39.543Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339532-lpha0",
+      "action": "Team Member Updated",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016339521",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin updated team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:39.532Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339521-tc1ag",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1790016339521",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member MOCK_TEST_2026 Member (AI Research Lead)",
+      "timestamp": "2026-09-21T18:45:39.521Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339516-ur9jn",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016332427",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 Registration Target Event\"",
+      "timestamp": "2026-09-21T18:45:39.516Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016339511-3wmy0",
+      "action": "Registration Deleted",
+      "entity_type": "EventRegistration",
+      "entity_id": "reg-1790016332431-fkcoq0",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted registration for MOCK_TEST_2026 Candidate (TKT-FKCOQ0)",
+      "timestamp": "2026-09-21T18:45:39.511Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332428-vtfwf",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016332427",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 Registration Target Event\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:45:32.428Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332418-qr4ck",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016332402",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"MOCK_TEST_2026 UPDATED AI Summit\"",
+      "timestamp": "2026-09-21T18:45:32.418Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332410-rljbr",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016332402",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"MOCK_TEST_2026 UPDATED AI Summit\" (Status: Registration Open, Type: SOLO)",
+      "timestamp": "2026-09-21T18:45:32.410Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332403-pqtyg",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016332402",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 AI Summit\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:45:32.403Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332375-43jo3",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T18:45:32.375Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016332367-rjjy3",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-21T18:45:32.367Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259634-jteuo",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "MOCK_TEST_2026_TEAM_1790016259620",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:44:19.634Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259628-omxjh",
+      "action": "Team Member Updated",
+      "entity_type": "TeamMember",
+      "entity_id": "MOCK_TEST_2026_TEAM_1790016259620",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin updated team member MOCK_TEST_2026 Member (Senior AI Research Lead)",
+      "timestamp": "2026-09-21T18:44:19.628Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259623-g9x5x",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "MOCK_TEST_2026_TEAM_1790016259620",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member MOCK_TEST_2026 Member (AI Research Lead)",
+      "timestamp": "2026-09-21T18:44:19.623Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259613-zhj7h",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016259612",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 Registration Target Event\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:44:19.613Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259600-wjqep",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790016259599",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"MOCK_TEST_2026 AI Summit\" (SOLO participation)",
+      "timestamp": "2026-09-21T18:44:19.600Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259575-9av2r",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T18:44:19.575Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016259569-exwr7",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-21T18:44:19.569Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016202949-a3nea",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "admin",
+      "admin_email": "admin",
+      "details": "Failed login attempt for unknown account 'admin'",
+      "timestamp": "2026-09-21T18:43:22.949Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790016202944-ji14n",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "admin",
+      "admin_email": "admin",
+      "details": "Failed login attempt for unknown account 'admin'",
+      "timestamp": "2026-09-21T18:43:22.944Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790012078070-btrio",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-code-clash-2026",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"CodeClash 2026: Algorithmic Duel & Speed Programming\"",
+      "timestamp": "2026-09-21T17:34:38.070Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790012076114-y66he",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-neurohack-2026",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"NeuroHack 2026: 24-Hour State-Level AI Hackathon\"",
+      "timestamp": "2026-09-21T17:34:36.114Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790012072100-7gdvc",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-genai-masterclass",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"Deep Dive: Building Autonomous Agents with Gemini & LangChain\"",
+      "timestamp": "2026-09-21T17:34:32.100Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790012068477-r1fes",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-vision-robotics",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"Edge AI & Computer Vision with OpenCV and Embedded Systems\"",
+      "timestamp": "2026-09-21T17:34:28.477Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790012060196-psk7t",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T17:34:20.196Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1789991017891-dfei4",
       "action": "Admin Logout",

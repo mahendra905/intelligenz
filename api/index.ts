@@ -11,6 +11,19 @@ import express, { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import QRCode from 'qrcode';
+import {
+  getSupabaseClient,
+  isSupabaseConfigured,
+  testSupabaseConnection,
+  uploadToSupabaseStorage,
+  generateSupabaseSQLSchema,
+} from './supabase';
+import {
+  loadStateFromSupabase,
+  syncDatabaseToSupabase,
+  upsertSupabaseRecord,
+  deleteSupabaseRecord,
+} from './supabaseRepo';
 export type EventStatus =
   | 'Upcoming'
   | 'Registration Open'
@@ -1303,12 +1316,56 @@ function saveDatabase(database: DatabaseSchema) {
       }
     }
   } catch (err: any) {
-    console.error('[Database Error] Failed to write database file:', err?.message);
-    throw new Error(`Database persistence failure: ${err?.message || 'Could not write to disk'}`);
+    if (!isSupabaseConfigured()) {
+      console.error('[Database Error] Failed to write database file:', err?.message);
+    }
+  }
+
+  // If Supabase is configured, also push updates to Supabase PostgreSQL
+  if (isSupabaseConfigured()) {
+    syncDatabaseToSupabase(database).catch((err) => {
+      console.warn('[Supabase Sync Warning]:', err?.message || err);
+    });
   }
 }
 
 let db = loadDatabase();
+
+let isSupabaseHydrated = false;
+let lastHydrationTime = 0;
+const HYDRATION_TTL_MS = 5000;
+
+async function ensureSupabaseHydrated(force = false): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const now = Date.now();
+  if (!force && isSupabaseHydrated && now - lastHydrationTime < HYDRATION_TTL_MS) {
+    return;
+  }
+
+  try {
+    const supabaseData = await loadStateFromSupabase();
+    if (supabaseData && (supabaseData.events.length > 0 || supabaseData.admin_users.length > 0)) {
+      db = {
+        ...db,
+        ...supabaseData,
+        admin_users: supabaseData.admin_users.length > 0 ? supabaseData.admin_users : db.admin_users,
+        settings: (supabaseData.settings && Object.keys(supabaseData.settings).length > 0) ? supabaseData.settings : db.settings,
+        stats: (supabaseData.stats && Object.keys(supabaseData.stats).length > 0) ? supabaseData.stats : db.stats,
+      };
+      isSupabaseHydrated = true;
+      lastHydrationTime = now;
+    } else if (supabaseData && supabaseData.events.length === 0) {
+      // Auto-seed initial data to Supabase
+      console.log('[Supabase Auto-Seed] Supabase tables connected, seeding database...');
+      await syncDatabaseToSupabase(db);
+      isSupabaseHydrated = true;
+      lastHydrationTime = now;
+    }
+  } catch (err: any) {
+    console.warn('[Supabase Hydration Error]:', err?.message);
+  }
+}
+
 
 function logAdminAction(
   action: string,
@@ -2166,13 +2223,21 @@ app.get(['/club-logo.jpeg', '/club%20logo.jpeg', '/club logo.jpeg'], (req, res, 
   next();
 });
 
-// Request logger for API calls
-app.use((req, res, next) => {
+// Request logger and Supabase hydration for API calls
+app.use(async (req, res, next) => {
   if (req.path.startsWith('/api')) {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    if (isSupabaseConfigured()) {
+      try {
+        await ensureSupabaseHydrated();
+      } catch (err) {
+        // Continue safely with cached state
+      }
+    }
   }
   next();
 });
+
 
   // ==========================================
   // PUBLIC & SHARED API ROUTES
@@ -2194,13 +2259,19 @@ app.use((req, res, next) => {
       runtime: isVercel ? 'vercel-serverless' : 'node-server',
       services: {
         database: isDbConfigured ? 'configured' : 'unavailable',
+        supabase: isSupabaseConfigured() ? 'connected' : 'not_configured',
         authentication: isAuthConfigured ? 'configured' : 'unavailable',
         session: isSessionConfigured ? 'configured' : 'unavailable',
         smtp: isSmtpConfigured ? 'configured' : 'unconfigured_fallback',
       },
+      supabase: {
+        configured: isSupabaseConfigured(),
+        hydrated: isSupabaseHydrated,
+      },
       adminUsersCount: db.admin_users ? db.admin_users.length : 0,
       timestamp: new Date().toISOString(),
     });
+
   });
 
   // Settings & Metadata
@@ -3072,7 +3143,7 @@ app.use((req, res, next) => {
   // ==========================================
   // AUTHENTICATION & ACCESS CONTROL
   // ==========================================
-  app.post('/api/auth/login', rateLimiter(60, 60000), (req, res) => {
+  app.post(['/api/auth/login', '/api/admin/auth/login'], rateLimiter(60, 60000), (req, res) => {
     try {
       const { username, email, identifier: rawIdentifier, password } = req.body || {};
       const identifier = (rawIdentifier || username || email || '').trim().toLowerCase();
@@ -5750,8 +5821,22 @@ app.use((req, res, next) => {
       const safeFilename = `${prefix}${safeId}.${extension}`;
       const targetFilePath = path.join(UPLOADS_DIR, safeFilename);
 
-      // Write binary file to persistent uploads directory
-      fs.writeFileSync(targetFilePath, buffer);
+      let publicUrl = `/uploads/${safeFilename}`;
+
+      // Upload to Supabase Storage if configured
+      if (isSupabaseConfigured()) {
+        const storageResult = await uploadToSupabaseStorage(safeFilename, buffer, verifiedMime);
+        if (storageResult && storageResult.url) {
+          publicUrl = storageResult.url;
+        }
+      }
+
+      // Also write binary file to local uploads directory as backup
+      try {
+        fs.writeFileSync(targetFilePath, buffer);
+      } catch (err: any) {
+        // Ephemeral filesystem in serverless environments
+      }
 
       // Log in admin audit logs
       logAdminAction(
@@ -5763,7 +5848,6 @@ app.use((req, res, next) => {
         req
       );
 
-      const publicUrl = `/uploads/${safeFilename}`;
       res.status(201).json({
         success: true,
         url: publicUrl,
@@ -5771,10 +5855,81 @@ app.use((req, res, next) => {
         original_name: path.basename(filename || 'image'),
         size: buffer.length,
         mime_type: verifiedMime,
+        storage: isSupabaseConfigured() ? 'supabase-storage' : 'local-disk',
       });
     } catch (err: any) {
       console.error('Image upload failed:', err);
       res.status(500).json({ error: 'Image upload failed. Please try again.' });
+    }
+  });
+
+  // ==========================================
+  // SUPABASE DATABASE STATUS & SYNCHRONIZATION
+  // ==========================================
+  adminRouter.get('/supabase/status', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    const configured = isSupabaseConfigured();
+    const conn = await testSupabaseConnection();
+    res.json({
+      configured,
+      connected: conn.connected,
+      error: conn.error,
+      message: conn.message,
+      hydrated: isSupabaseHydrated,
+      url: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.slice(0, 15)}...` : null,
+    });
+  });
+
+
+  adminRouter.post('/supabase/sync', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    if (!isSupabaseConfigured()) {
+      res.status(400).json({
+        success: false,
+        error: 'Supabase credentials are not configured in environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).',
+      });
+      return;
+    }
+
+    try {
+      const result = await syncDatabaseToSupabase(db);
+      if (result.success) {
+        isSupabaseHydrated = true;
+        logAdminAction(
+          'Supabase Full Database Sync',
+          'Database',
+          'all',
+          'Admin synchronized all database tables to Supabase PostgreSQL',
+          req.adminUser?.email,
+          req
+        );
+        res.json({
+          success: true,
+          message: 'All collections and records successfully pushed to Supabase PostgreSQL.',
+          stats: {
+            events: db.events.length,
+            announcements: db.announcements.length,
+            team: db.team.length,
+            projects: db.projects.length,
+            gallery: db.gallery.length,
+            join_applications: db.join_applications.length,
+            registrations: db.registrations.length,
+            certificates: db.certificates.length,
+            checkins: db.checkins.length,
+            messages: db.messages.length,
+            newsletter_subscribers: db.newsletter_subscribers.length,
+            admin_users: db.admin_users.length,
+          },
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: `Supabase sync failed: ${result.errors.join(', ')}`,
+        });
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Failed to synchronize with Supabase',
+      });
     }
   });
 
@@ -5877,199 +6032,11 @@ app.use((req, res, next) => {
 
   // PostgreSQL / Supabase Schema Exporter
   app.get('/api/export-supabase-sql', (req, res) => {
-    const sql = `
--- ====================================================================
--- INTELLIGENZ CLUB - PRODUCTION SUPABASE / POSTGRESQL SCHEMA
--- Official Technical Club of Department of CSE (AIML) & AI
--- DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY
--- ====================================================================
-
--- 1. Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 2. Events Table
-CREATE TABLE IF NOT EXISTS public.events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  description TEXT NOT NULL,
-  short_description TEXT NOT NULL,
-  event_image TEXT NOT NULL,
-  date DATE NOT NULL,
-  start_time TEXT NOT NULL,
-  end_time TEXT NOT NULL,
-  venue TEXT NOT NULL,
-  category TEXT NOT NULL,
-  speaker TEXT,
-  speaker_bio TEXT,
-  speaker_avatar TEXT,
-  registration_url TEXT,
-  registration_deadline TIMESTAMP WITH TIME ZONE,
-  maximum_participants INTEGER DEFAULT 100,
-  current_participants INTEGER DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'Upcoming',
-  featured BOOLEAN DEFAULT false,
-  highlights JSONB DEFAULT '[]'::jsonb,
-  photos JSONB DEFAULT '[]'::jsonb,
-  results TEXT,
-  winners JSONB DEFAULT '[]'::jsonb,
-  certificates_available BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexing for performance (500+ concurrent visitors)
-CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
-CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
-CREATE INDEX IF NOT EXISTS idx_events_slug ON public.events(slug);
-CREATE INDEX IF NOT EXISTS idx_events_featured ON public.events(featured);
-
--- 3. Announcements Table
-CREATE TABLE IF NOT EXISTS public.announcements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  content TEXT NOT NULL,
-  summary TEXT NOT NULL,
-  featured_image TEXT,
-  category TEXT NOT NULL,
-  author TEXT NOT NULL,
-  author_role TEXT NOT NULL,
-  published_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  featured BOOLEAN DEFAULT false,
-  tags JSONB DEFAULT '[]'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_announcements_published_at ON public.announcements(published_at);
-CREATE INDEX IF NOT EXISTS idx_announcements_slug ON public.announcements(slug);
-CREATE INDEX IF NOT EXISTS idx_announcements_category ON public.announcements(category);
-
--- 4. Join Applications Table
-CREATE TABLE IF NOT EXISTS public.join_applications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  full_name TEXT NOT NULL,
-  college_email TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  department TEXT NOT NULL,
-  year TEXT NOT NULL,
-  roll_number TEXT NOT NULL,
-  technical_interests JSONB DEFAULT '[]'::jsonb,
-  skills TEXT NOT NULL,
-  why_join TEXT NOT NULL,
-  github_url TEXT,
-  linkedin_url TEXT,
-  agreed_updates BOOLEAN DEFAULT true,
-  status TEXT DEFAULT 'New',
-  reviewer_notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_join_email ON public.join_applications(LOWER(college_email));
-CREATE UNIQUE INDEX IF NOT EXISTS idx_join_roll ON public.join_applications(UPPER(roll_number));
-CREATE INDEX IF NOT EXISTS idx_join_status ON public.join_applications(status);
-
--- 5. Event Registrations Table
-CREATE TABLE IF NOT EXISTS public.event_registrations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
-  event_title TEXT NOT NULL,
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  department TEXT NOT NULL,
-  year TEXT NOT NULL,
-  roll_number TEXT NOT NULL,
-  status TEXT DEFAULT 'Confirmed',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT unique_event_registration UNIQUE(event_id, email)
-);
-
-CREATE INDEX IF NOT EXISTS idx_reg_event ON public.event_registrations(event_id);
-
--- 6. Team Members Table
-CREATE TABLE IF NOT EXISTS public.team_members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  position TEXT NOT NULL,
-  category TEXT NOT NULL,
-  bio TEXT NOT NULL,
-  photo_url TEXT NOT NULL,
-  linkedin TEXT,
-  github TEXT,
-  email TEXT,
-  featured BOOLEAN DEFAULT false,
-  order_index INTEGER DEFAULT 0
-);
-
--- 7. Projects Table
-CREATE TABLE IF NOT EXISTS public.projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  description TEXT NOT NULL,
-  short_description TEXT NOT NULL,
-  category TEXT NOT NULL,
-  tech_stack JSONB DEFAULT '[]'::jsonb,
-  team_members JSONB DEFAULT '[]'::jsonb,
-  github_url TEXT,
-  demo_url TEXT,
-  image_url TEXT NOT NULL,
-  featured BOOLEAN DEFAULT false,
-  status TEXT DEFAULT 'Completed',
-  date TEXT NOT NULL
-);
-
--- 8. Gallery Images Table
-CREATE TABLE IF NOT EXISTS public.gallery_images (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  album TEXT NOT NULL,
-  event_name TEXT NOT NULL,
-  image_url TEXT NOT NULL,
-  caption TEXT,
-  date DATE NOT NULL,
-  featured BOOLEAN DEFAULT false
-);
-
--- 9. Contact Messages Table
-CREATE TABLE IF NOT EXISTS public.contact_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  message TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT false,
-  responded BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable Row Level Security (RLS)
-ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.gallery_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.join_applications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
-
--- Read policies for public tables
-CREATE POLICY "Allow public read on events" ON public.events FOR SELECT USING (true);
-CREATE POLICY "Allow public read on announcements" ON public.announcements FOR SELECT USING (true);
-CREATE POLICY "Allow public read on team" ON public.team_members FOR SELECT USING (true);
-CREATE POLICY "Allow public read on projects" ON public.projects FOR SELECT USING (true);
-CREATE POLICY "Allow public read on gallery" ON public.gallery_images FOR SELECT USING (true);
-
--- Insert policies for public submissions
-CREATE POLICY "Allow public join application submit" ON public.join_applications FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public event registration" ON public.event_registrations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public contact message submit" ON public.contact_messages FOR INSERT WITH CHECK (true);
-`;
+    const sql = generateSupabaseSQLSchema();
     res.setHeader('Content-Type', 'text/plain');
     res.send(sql);
   });
+
 
   // 404 for unknown API endpoints
   app.all('/api/*', (req, res) => {
