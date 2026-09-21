@@ -818,6 +818,16 @@
   ],
   "audit_logs": [
     {
+      "id": "log-1789989207421-iri04",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "test@example.com",
+      "admin_email": "test@example.com",
+      "details": "Failed login attempt for unknown account 'test@example.com'",
+      "timestamp": "2026-09-21T11:13:27.421Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
       "id": "log-1789987745000-dodrr",
       "action": "Admin Login Success",
       "entity_type": "Auth",

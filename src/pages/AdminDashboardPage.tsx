@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { IntelligenzLogo } from '../components/IntelligenzLogo';
 import { api } from '../lib/api';
 import {
@@ -42,26 +42,28 @@ import {
 
 // Subcomponents
 import { SignOutConfirmModal } from '../components/SignOutConfirmModal';
-import { AdminOverviewTab } from '../components/admin/AdminOverviewTab';
-import { AdminEventsTab } from '../components/admin/AdminEventsTab';
-import { AdminAnnouncementsTab } from '../components/admin/AdminAnnouncementsTab';
-import { AdminProjectsTab } from '../components/admin/AdminProjectsTab';
-import { AdminTeamTab } from '../components/admin/AdminTeamTab';
-import { AdminGalleryTab } from '../components/admin/AdminGalleryTab';
-import { AdminApplicationsTab } from '../components/admin/AdminApplicationsTab';
-import { AdminRegistrationsTab } from '../components/admin/AdminRegistrationsTab';
-import { AdminMessagesTab } from '../components/admin/AdminMessagesTab';
-import { AdminStatsTab } from '../components/admin/AdminStatsTab';
-import { AdminSettingsTab } from '../components/admin/AdminSettingsTab';
-import { AdminProfileTab } from '../components/admin/AdminProfileTab';
-import { AdminManagementTab } from '../components/admin/AdminManagementTab';
-import { AdminSqlTab } from '../components/admin/AdminSqlTab';
-import { AdminCertificatesTab } from '../components/admin/AdminCertificatesTab';
-import { AdminAttendanceTab } from '../components/admin/AdminAttendanceTab';
-import { AdminNewsletterTab } from '../components/admin/AdminNewsletterTab';
 import { SessionWarningModal } from '../components/SessionWarningModal';
 import { useAdminSession } from '../lib/adminSession';
 import { authStorage } from '../lib/api';
+
+// Lazy-loaded Admin Tabs
+const AdminOverviewTab = lazy(() => import('../components/admin/AdminOverviewTab').then(m => ({ default: m.AdminOverviewTab })));
+const AdminEventsTab = lazy(() => import('../components/admin/AdminEventsTab').then(m => ({ default: m.AdminEventsTab })));
+const AdminAnnouncementsTab = lazy(() => import('../components/admin/AdminAnnouncementsTab').then(m => ({ default: m.AdminAnnouncementsTab })));
+const AdminProjectsTab = lazy(() => import('../components/admin/AdminProjectsTab').then(m => ({ default: m.AdminProjectsTab })));
+const AdminTeamTab = lazy(() => import('../components/admin/AdminTeamTab').then(m => ({ default: m.AdminTeamTab })));
+const AdminGalleryTab = lazy(() => import('../components/admin/AdminGalleryTab').then(m => ({ default: m.AdminGalleryTab })));
+const AdminApplicationsTab = lazy(() => import('../components/admin/AdminApplicationsTab').then(m => ({ default: m.AdminApplicationsTab })));
+const AdminRegistrationsTab = lazy(() => import('../components/admin/AdminRegistrationsTab').then(m => ({ default: m.AdminRegistrationsTab })));
+const AdminMessagesTab = lazy(() => import('../components/admin/AdminMessagesTab').then(m => ({ default: m.AdminMessagesTab })));
+const AdminStatsTab = lazy(() => import('../components/admin/AdminStatsTab').then(m => ({ default: m.AdminStatsTab })));
+const AdminSettingsTab = lazy(() => import('../components/admin/AdminSettingsTab').then(m => ({ default: m.AdminSettingsTab })));
+const AdminProfileTab = lazy(() => import('../components/admin/AdminProfileTab').then(m => ({ default: m.AdminProfileTab })));
+const AdminManagementTab = lazy(() => import('../components/admin/AdminManagementTab').then(m => ({ default: m.AdminManagementTab })));
+const AdminSqlTab = lazy(() => import('../components/admin/AdminSqlTab').then(m => ({ default: m.AdminSqlTab })));
+const AdminCertificatesTab = lazy(() => import('../components/admin/AdminCertificatesTab').then(m => ({ default: m.AdminCertificatesTab })));
+const AdminAttendanceTab = lazy(() => import('../components/admin/AdminAttendanceTab').then(m => ({ default: m.AdminAttendanceTab })));
+const AdminNewsletterTab = lazy(() => import('../components/admin/AdminNewsletterTab').then(m => ({ default: m.AdminNewsletterTab })));
 
 interface AdminDashboardPageProps {
   onLogout: () => void;
@@ -764,6 +766,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             )}
 
         {/* Active Tab View */}
+        <Suspense
+          fallback={
+            <div className="py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin text-[#00E5FF]" />
+              <p className="text-xs font-mono text-[#9CA3AF]">Loading administration tab...</p>
+            </div>
+          }
+        >
         {activeTab === 'overview' && (
           <AdminOverviewTab
             overviewData={overviewData}
@@ -867,6 +877,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {activeTab === 'admin-management' && isSuperAdmin && <AdminManagementTab />}
 
         {activeTab === 'sql' && <AdminSqlTab sqlSchema={sqlSchema} />}
+        </Suspense>
           </div>
         </main>
       </div>

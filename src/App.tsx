@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { SearchModal } from './components/SearchModal';
 import { EventRegisterModal } from './components/EventRegisterModal';
 
-// Pages
+// Direct import for fast first-paint
 import { HomePage } from './pages/HomePage';
-import { EventsPage } from './pages/EventsPage';
-import { EventDetailPage } from './pages/EventDetailPage';
-import { AnnouncementsPage } from './pages/AnnouncementsPage';
-import { AnnouncementDetailPage } from './pages/AnnouncementDetailPage';
-import { ProjectsPage } from './pages/ProjectsPage';
-import { TeamPage } from './pages/TeamPage';
-import { GalleryPage } from './pages/GalleryPage';
-import { AboutPage } from './pages/AboutPage';
-import { JoinPage } from './pages/JoinPage';
-import { ContactPage } from './pages/ContactPage';
-import { CertificatesPage } from './pages/CertificatesPage';
-import { AdminLoginPage } from './pages/AdminLoginPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
+
+// Lazy-loaded pages for optimized performance and bundle splitting
+const EventsPage = lazy(() => import('./pages/EventsPage').then((m) => ({ default: m.EventsPage })));
+const EventDetailPage = lazy(() => import('./pages/EventDetailPage').then((m) => ({ default: m.EventDetailPage })));
+const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage').then((m) => ({ default: m.AnnouncementsPage })));
+const AnnouncementDetailPage = lazy(() => import('./pages/AnnouncementDetailPage').then((m) => ({ default: m.AnnouncementDetailPage })));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })));
+const TeamPage = lazy(() => import('./pages/TeamPage').then((m) => ({ default: m.TeamPage })));
+const GalleryPage = lazy(() => import('./pages/GalleryPage').then((m) => ({ default: m.GalleryPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const JoinPage = lazy(() => import('./pages/JoinPage').then((m) => ({ default: m.JoinPage })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const CertificatesPage = lazy(() => import('./pages/CertificatesPage').then((m) => ({ default: m.CertificatesPage })));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 
 // API & Types
 import { api } from './lib/api';
@@ -303,7 +305,16 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className={isAdminRoute ? "min-h-screen" : "flex-1"}>
-        {renderContent()}
+        <Suspense
+          fallback={
+            <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+              <p className="text-xs font-mono">Loading module...</p>
+            </div>
+          }
+        >
+          {renderContent()}
+        </Suspense>
       </main>
 
       {/* Footer - Public Website Only */}
