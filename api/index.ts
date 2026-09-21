@@ -17,13 +17,13 @@ import {
   testSupabaseConnection,
   uploadToSupabaseStorage,
   generateSupabaseSQLSchema,
-} from './supabase';
+} from './supabase.js';
 import {
   loadStateFromSupabase,
   syncDatabaseToSupabase,
   upsertSupabaseRecord,
   deleteSupabaseRecord,
-} from './supabaseRepo';
+} from './supabaseRepo.js';
 export type EventStatus =
   | 'Upcoming'
   | 'Registration Open'

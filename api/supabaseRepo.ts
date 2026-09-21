@@ -1,4 +1,4 @@
-import { getSupabaseClient, isSupabaseConfigured } from './supabase';
+import { getSupabaseClient, isSupabaseConfigured } from './supabase.js';
 import type {
   DatabaseSchema,
   Event,
