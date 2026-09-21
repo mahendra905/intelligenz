@@ -24,7 +24,8 @@ export async function printCertificateElement(
       return false;
     }
 
-    console.log('[Print Diagnostic] Step 2: Element found:', element);
+    const elId = typeof elementOrId === 'string' ? elementOrId : elementOrId?.id || 'unknown';
+    console.log(`[Print Diagnostic] Step 2: Target element resolved (id: ${elId}, tag: ${element.tagName})`);
 
     // 2. Check element visibility and dimensions
     const rect = element.getBoundingClientRect();

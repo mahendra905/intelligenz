@@ -11,9 +11,13 @@ import {
   GraduationCap,
   X,
   FileSpreadsheet,
+  Send,
+  AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { EventRegistration, Event } from '../../types';
 import { DeleteConfirmModal } from '../DeleteConfirmModal';
+import { api } from '../../lib/api';
 
 interface AdminRegistrationsTabProps {
   registrations: EventRegistration[];
@@ -38,6 +42,25 @@ export const AdminRegistrationsTab: React.FC<AdminRegistrationsTabProps> = ({
   // Delete State
   const [deleteTarget, setDeleteTarget] = useState<EventRegistration | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Resend Email State
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<{ id: string; success: boolean; message: string } | null>(null);
+
+  const handleResendEmail = async (regId: string) => {
+    setResendingId(regId);
+    setResendMessage(null);
+    try {
+      const res = await api.adminResendEventPassEmail(regId);
+      setResendMessage({ id: regId, success: true, message: res.message || 'Pass email resent successfully' });
+      setTimeout(() => setResendMessage(null), 4000);
+    } catch (err: any) {
+      setResendMessage({ id: regId, success: false, message: err.message || 'Failed to resend pass email' });
+      setTimeout(() => setResendMessage(null), 5000);
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const filtered = registrations.filter((r) => {
     const studentName = r.full_name || r.participant_name || '';
@@ -178,7 +201,7 @@ export const AdminRegistrationsTab: React.FC<AdminRegistrationsTabProps> = ({
                   </span>
                 </h3>
 
-                <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#6B7280] mt-1">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#6B7280] mt-1.5">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5" />
                     {reg.email}
@@ -192,11 +215,61 @@ export const AdminRegistrationsTab: React.FC<AdminRegistrationsTabProps> = ({
                   <span>
                     RSVP Date: {new Date(reg.created_at || reg.registered_at || Date.now()).toLocaleDateString()}
                   </span>
+
+                  {/* Email Pass Delivery Status Badge */}
+                  {reg.email_status === 'sent' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Pass Emailed
+                    </span>
+                  )}
+                  {reg.email_status === 'failed' && (
+                    <span
+                      title={reg.email_error || 'Delivery issue'}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30"
+                    >
+                      <AlertCircle className="w-3 h-3" />
+                      Email Failed
+                    </span>
+                  )}
+                  {reg.email_status === 'disabled' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-zinc-500/10 text-zinc-400 border border-zinc-500/30">
+                      Email Disabled
+                    </span>
+                  )}
                 </div>
+
+                {resendMessage && resendMessage.id === reg.id && (
+                  <div
+                    className={`mt-2 text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${
+                      resendMessage.success
+                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+                    }`}
+                  >
+                    {resendMessage.success ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                    )}
+                    <span>{resendMessage.message}</span>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex items-center gap-2 self-end lg:self-center shrink-0">
+                <button
+                  type="button"
+                  title="Resend generated Event Pass to registrant email"
+                  disabled={resendingId === reg.id}
+                  onClick={() => handleResendEmail(reg.id)}
+                  className="px-2.5 py-1 rounded-lg bg-[#1A1C23] hover:bg-[#252833] text-purple-300 hover:text-purple-200 text-xs font-medium border border-purple-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Send className="w-3 h-3 text-purple-400" />
+                  <span>{resendingId === reg.id ? 'Sending...' : 'Resend Pass'}</span>
+                </button>
+
                 <select
                   value={reg.status || 'Confirmed'}
                   onChange={(e) => onUpdateStatus(reg.id, e.target.value)}

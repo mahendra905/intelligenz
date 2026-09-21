@@ -22,6 +22,8 @@ export const authStorage = {
     try {
       localStorage.removeItem(ADMIN_TOKEN_KEY);
       localStorage.removeItem(ADMIN_USER_KEY);
+      localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.LAST_ACTIVITY);
+      localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.SESSION_START);
     } catch {
       // ignore
     }

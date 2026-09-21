@@ -10,8 +10,13 @@ import {
   Megaphone,
   UserCheck,
   Award,
+  Send,
+  Radio,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { SiteSettings } from '../../types';
+import { api } from '../../lib/api';
 
 interface AdminSettingsTabProps {
   settings: SiteSettings | null;
@@ -32,6 +37,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
     contact_address: 'AI & Data Science Block, Room 304, DR. KVSRIT Campus, Kurnool, Andhra Pradesh - 518218',
     is_recruitment_open: true,
     join_us_status: true,
+    automated_email_enabled: true,
+    email_sender_name: 'IntelliGenZ Club',
+    email_sender_address: 'intelligenz@drkvsrit.ac.in',
     certificate_signing_authority: 'Dr. K. E. Sreenivasa Murthy',
     certificate_lead_name: 'Dr. K. E. Sreenivasa Murthy',
     certificate_lead_designation: 'Faculty Coordinator & HOD - CSE (AIML)',
@@ -48,6 +56,26 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Email status & testing state
+  const [emailStatusInfo, setEmailStatusInfo] = useState<{
+    enabled: boolean;
+    is_live_smtp: boolean;
+    connected?: boolean;
+    smtp_status?: 'Connected' | 'Not Connected' | 'Not Configured';
+    connection_error?: string | null;
+    provider_info: string;
+    sender_name: string;
+    sender_address: string;
+    smtp_host: string | null;
+    smtp_port?: number | null;
+    smtp_secure?: boolean;
+    smtp_user_masked?: string | null;
+    total_sent_this_session: number;
+  } | null>(null);
+  const [testEmailInput, setTestEmailInput] = useState('');
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailFeedback, setTestEmailFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   useEffect(() => {
     if (settings) {
       setFormData({
@@ -60,6 +88,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         contact_address: settings.contact_address || '',
         is_recruitment_open: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
         join_us_status: settings.join_us_status !== undefined ? settings.join_us_status : (settings.is_recruitment_open ?? true),
+        automated_email_enabled: settings.automated_email_enabled !== undefined ? settings.automated_email_enabled : true,
+        email_sender_name: settings.email_sender_name || 'IntelliGenZ Club',
+        email_sender_address: settings.email_sender_address || 'intelligenz@drkvsrit.ac.in',
         announcement_ticker: settings.announcement_ticker || '',
         certificate_signing_authority: settings.certificate_signing_authority || settings.certificate_lead_name || 'Dr. K. E. Sreenivasa Murthy',
         certificate_lead_name: settings.certificate_lead_name || settings.certificate_signing_authority || 'Dr. K. E. Sreenivasa Murthy',
@@ -73,6 +104,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         },
       });
     }
+
+    // Load live email status
+    api.adminGetEmailStatus().then(setEmailStatusInfo).catch(() => {});
   }, [settings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,8 +117,37 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
       await onSaveSettings(formData);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      const updatedStatus = await api.adminGetEmailStatus().catch(() => null);
+      if (updatedStatus) setEmailStatusInfo(updatedStatus);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    const target = testEmailInput.trim() || formData.contact_email || 'test@intelligenz.org';
+    if (!target || !target.includes('@')) {
+      setTestEmailFeedback({ type: 'error', message: 'Please enter a valid recipient email address.' });
+      return;
+    }
+
+    setTestingEmail(true);
+    setTestEmailFeedback(null);
+    try {
+      const res = await api.adminSendTestEmail(target);
+      setTestEmailFeedback({
+        type: 'success',
+        message: res.message || `Test email successfully sent to ${target}!`,
+      });
+      const updatedStatus = await api.adminGetEmailStatus().catch(() => null);
+      if (updatedStatus) setEmailStatusInfo(updatedStatus);
+    } catch (err: any) {
+      setTestEmailFeedback({
+        type: 'error',
+        message: err.message || 'Failed to dispatch test email.',
+      });
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -254,6 +317,250 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                 <span>[ {(formData.join_us_status ?? formData.is_recruitment_open) ? 'ON' : 'OFF'} ]</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Automated Event Pass Email Configuration */}
+        <div className="p-6 rounded-2xl bg-[#0D1017] border border-[#1A1C23] space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1A1C23] pb-3">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[#00E5FF]" />
+              Automated Event Pass Email System
+            </h3>
+            {emailStatusInfo && (
+              <span
+                className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-bold uppercase border flex items-center gap-1.5 ${
+                  emailStatusInfo.is_live_smtp
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                }`}
+              >
+                <Radio className="w-3 h-3 animate-pulse" />
+                <span>{emailStatusInfo.provider_info}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Master ON/OFF Toggle */}
+          <div className="p-4 sm:p-5 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div
+                className={`p-2.5 rounded-lg border shrink-0 transition-colors ${
+                  formData.automated_email_enabled
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}
+              >
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Automated Event Pass Email</span>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded font-extrabold uppercase border ${
+                      formData.automated_email_enabled
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    }`}
+                  >
+                    {formData.automated_email_enabled ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#9CA3AF] mt-0.5 max-w-xl leading-relaxed">
+                  {formData.automated_email_enabled ? (
+                    <span>
+                      <strong className="text-emerald-400">Status ON:</strong> Every successful event registration automatically emails the generated Event Pass (PDF & QR attachment) to the registrant.
+                    </span>
+                  ) : (
+                    <span>
+                      <strong className="text-rose-400">Status OFF:</strong> Registrations and Event Pass generation continue working normally on the website, but automatic email sending is paused.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 self-end sm:self-center">
+              <button
+                type="button"
+                id="automated-email-toggle-btn"
+                onClick={() => {
+                  setFormData({
+                    ...formData,
+                    automated_email_enabled: !formData.automated_email_enabled,
+                  });
+                }}
+                className={`px-4 py-2 rounded-lg text-xs font-black font-mono tracking-wider uppercase transition-all duration-200 border cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                  formData.automated_email_enabled
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-[#0A0B0E] border-emerald-400 shadow-emerald-500/20'
+                    : 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-rose-600/20'
+                }`}
+              >
+                <span>[ {formData.automated_email_enabled ? 'ON' : 'OFF'} ]</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sender Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div>
+              <label className="block text-xs font-semibold text-[#D1D5DB] mb-1">
+                Email Sender Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. IntelliGenZ Club"
+                value={formData.email_sender_name || ''}
+                onChange={(e) => setFormData({ ...formData, email_sender_name: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
+              />
+              <span className="text-[10px] text-[#6B7280] mt-1 block">
+                The display name shown as the sender in registrant inboxes.
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#D1D5DB] mb-1">
+                Sender Email Address
+              </label>
+              <input
+                type="email"
+                placeholder="e.g. intelligenz@drkvsrit.ac.in"
+                value={formData.email_sender_address || ''}
+                onChange={(e) => setFormData({ ...formData, email_sender_address: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-lg bg-[#0A0B0E] border border-[#1A1C23] text-xs text-white focus:outline-none focus:border-[#00E5FF]"
+              />
+              <span className="text-[10px] text-[#6B7280] mt-1 block">
+                Official from/reply-to address used for transactional event pass emails.
+              </span>
+            </div>
+          </div>
+
+          {/* Minimal SMTP Configuration & Status Section */}
+          <div className="p-4 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#1A1C23]">
+              <div>
+                <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Radio className="w-3.5 h-3.5 text-[#00E5FF]" />
+                  SMTP Server Status
+                </span>
+                <span className="text-[11px] text-[#6B7280] block mt-0.5">
+                  Live outbound mail transport configured via server environment variables
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#9CA3AF] font-medium">SMTP Status:</span>
+                {emailStatusInfo ? (
+                  <span
+                    className={`text-xs font-mono font-bold px-3 py-1 rounded-md border flex items-center gap-1.5 shadow-sm ${
+                      emailStatusInfo.connected || emailStatusInfo.smtp_status === 'Connected'
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        emailStatusInfo.connected || emailStatusInfo.smtp_status === 'Connected'
+                          ? 'bg-emerald-400 animate-pulse'
+                          : 'bg-rose-400'
+                      }`}
+                    />
+                    [ {emailStatusInfo.connected || emailStatusInfo.smtp_status === 'Connected' ? 'Connected' : 'Not Connected'} ]
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono px-2 py-1 rounded bg-[#1A1C23] text-zinc-400">
+                    Checking...
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Diagnostics details */}
+            {emailStatusInfo && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-[#9CA3AF] bg-[#0D1017] p-2.5 rounded-lg border border-[#1A1C23]">
+                <div>
+                  <span className="text-[#6B7280] block">SMTP Host:</span>
+                  <span className="font-mono text-white font-medium truncate block">
+                    {emailStatusInfo.smtp_host || 'smtp.gmail.com'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#6B7280] block">Port / Security:</span>
+                  <span className="font-mono text-white font-medium block">
+                    {emailStatusInfo.smtp_port || 465} ({emailStatusInfo.smtp_secure ? 'SSL' : 'STARTTLS'})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#6B7280] block">Auth User:</span>
+                  <span className="font-mono text-white font-medium truncate block">
+                    {emailStatusInfo.smtp_user_masked || 'intelligenz@drkvsrit.ac.in'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#6B7280] block">Sent This Session:</span>
+                  <span className="font-mono text-[#00E5FF] font-medium block">
+                    {emailStatusInfo.total_sent_this_session} emails
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {emailStatusInfo?.connection_error && (
+              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <span>SMTP Diagnostic: {emailStatusInfo.connection_error}</span>
+              </div>
+            )}
+
+            {/* Send Test Email Action */}
+            <div className="pt-1">
+              <label className="block text-xs font-semibold text-[#D1D5DB] mb-1.5">
+                Send Test Email (SMTP Verification)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="email"
+                  placeholder="Enter recipient email address..."
+                  value={testEmailInput}
+                  onChange={(e) => setTestEmailInput(e.target.value)}
+                  className="flex-1 px-3.5 py-2 rounded-lg bg-[#0D1017] border border-[#1A1C23] text-xs text-white placeholder:text-[#4B5563] focus:outline-none focus:border-[#00E5FF]"
+                />
+                <button
+                  type="button"
+                  id="send-test-email-btn"
+                  disabled={testingEmail}
+                  onClick={handleSendTestEmail}
+                  className="px-4 py-2 rounded-lg bg-[#1A1C23] hover:bg-[#222631] text-[#00E5FF] border border-[#00E5FF]/30 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {testingEmail ? (
+                    <span>Verifying &amp; Sending...</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Test Email</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {testEmailFeedback && (
+              <div
+                className={`p-3 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                  testEmailFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                    : 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
+                }`}
+              >
+                {testEmailFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                )}
+                <span>{testEmailFeedback.message}</span>
+              </div>
+            )}
           </div>
         </div>
 

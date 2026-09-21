@@ -24,6 +24,11 @@ class AdminSessionCoordinator {
   }
 
   private initTimes() {
+    if (!authStorage.isAuthenticated()) {
+      this.lastActivity = 0;
+      this.sessionStart = 0;
+      return;
+    }
     const storedLast = localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.LAST_ACTIVITY);
     const storedStart = localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.SESSION_START);
     const now = Date.now();
@@ -125,9 +130,9 @@ class AdminSessionCoordinator {
     }
   }
 
-  public resetSessionOnLogin() {
+  public resetSessionOnLogin(startTime?: number) {
     this.isTerminated = false;
-    const now = Date.now();
+    const now = typeof startTime === 'number' && startTime > 0 ? startTime : Date.now();
     this.lastActivity = now;
     this.sessionStart = now;
     try {
@@ -142,24 +147,40 @@ class AdminSessionCoordinator {
     }
   }
 
-  public initializeSession(_token?: string) {
-    this.resetSessionOnLogin();
+  public initializeSession(startTimeOrToken?: number | string) {
+    const startTime = typeof startTimeOrToken === 'number' ? startTimeOrToken : undefined;
+    this.resetSessionOnLogin(startTime);
   }
 
   public getStatus() {
+    if (!authStorage.isAuthenticated()) {
+      return {
+        now: Date.now(),
+        lastActivity: 0,
+        sessionStart: 0,
+        idleElapsed: 0,
+        lifetimeElapsed: 0,
+        idleRemaining: 0,
+        lifetimeRemaining: 0,
+        isIdleExpired: false,
+        isLifetimeExpired: false,
+        isWarning: false,
+      };
+    }
+
     // Re-check localStorage for any recent activity written by other tabs
     try {
       const storedLast = localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.LAST_ACTIVITY);
       if (storedLast) {
         const parsed = parseInt(storedLast, 10);
-        if (!isNaN(parsed) && parsed > this.lastActivity) {
+        if (!isNaN(parsed) && parsed > 0 && parsed > this.lastActivity) {
           this.lastActivity = parsed;
         }
       }
       const storedStart = localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.SESSION_START);
       if (storedStart) {
         const parsed = parseInt(storedStart, 10);
-        if (!isNaN(parsed)) {
+        if (!isNaN(parsed) && parsed > 0) {
           this.sessionStart = parsed;
         }
       }
@@ -167,7 +188,26 @@ class AdminSessionCoordinator {
       // ignore
     }
 
+    // Fallback: If sessionStart is not set or 0, initialize to current time
     const now = Date.now();
+    if (!this.sessionStart || isNaN(this.sessionStart) || this.sessionStart <= 0) {
+      this.sessionStart = now;
+      try {
+        localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.SESSION_START, this.sessionStart.toString());
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!this.lastActivity || isNaN(this.lastActivity) || this.lastActivity <= 0) {
+      this.lastActivity = now;
+      try {
+        localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.LAST_ACTIVITY, this.lastActivity.toString());
+      } catch {
+        // ignore
+      }
+    }
+
     const idleElapsed = now - this.lastActivity;
     const lifetimeElapsed = now - this.sessionStart;
 
@@ -233,7 +273,7 @@ class AdminSessionCoordinator {
     if (reason === 'inactivity') {
       message = 'Your session has expired after 15 minutes of inactivity. Please sign in again.';
     } else if (reason === 'max_lifetime') {
-      message = 'Your session reached the maximum 8-hour duration. Please sign in again.';
+      message = 'Your session reached the maximum 24-hour duration. Please sign in again.';
     } else if (reason === 'unauthorized') {
       message = 'Your session is no longer valid. Please sign in again.';
     }

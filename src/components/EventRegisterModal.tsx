@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Event, TeamMemberRegistration } from '../types';
 import { api } from '../lib/api';
-import { X, Sparkles, CheckCircle2, AlertCircle, Loader2, Calendar, MapPin, Users, UserPlus, Trash2, ShieldCheck, User, Download, Printer, QrCode, Copy, Check } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, AlertCircle, Loader2, Calendar, MapPin, Users, UserPlus, Trash2, ShieldCheck, User, Download, Printer, QrCode, Copy, Check, Mail } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import QRCode from 'qrcode';
 
@@ -504,6 +504,17 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                   </>
                 )}
               </p>
+
+              {/* Email Sent Confirmation Badge */}
+              {(successData.email_sent || successData.registration?.email_status === 'sent') && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-medium">
+                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    A copy of your Event Pass has been sent to{' '}
+                    <strong className="text-white">{successData.registration?.email || email}</strong>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* If Confirmed: Show Unique Attendance QR Pass Card */}

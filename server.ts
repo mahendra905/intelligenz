@@ -1,10 +1,14 @@
 import path from 'path';
 import http from 'http';
+import fs from 'fs';
 import dotenv from 'dotenv';
+
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+if (fs.existsSync(path.resolve(process.cwd(), '.env.example'))) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.example') });
+}
 
 import express, { Request, Response, NextFunction } from 'express';
-import fs from 'fs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
@@ -388,38 +392,108 @@ function logAdminAction(
 }
 
 // ============================================================================
-// AUTOMATED EVENT-PASS EMAIL SYSTEM (BACKEND & SECURE CREDENTIALS)
+// AUTOMATED EVENT-PASS EMAIL SYSTEM (BACKEND & SECURE SMTP TRANSPORT)
 // ============================================================================
 const sentPassEmailRegistrations = new Set<string>();
 
-function getEmailTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+function sanitizeSmtpError(err: any): string {
+  if (!err) return 'Unknown SMTP error';
+  let msg = typeof err === 'string' ? err : err.message || 'SMTP connection failed';
+  const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '';
+  if (rawPass && rawPass.length > 2) {
+    msg = msg.split(rawPass).join('********');
+    const stripped = rawPass.replace(/\s+/g, '');
+    if (stripped.length > 2) {
+      msg = msg.split(stripped).join('********');
+    }
+  }
+  return msg;
+}
 
-  if (host && user) {
+function getEmailTransporter() {
+  const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const user = (process.env.SMTP_USER || 'intelligenz@drkvsrit.ac.in').trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '').trim();
+  // Strip whitespace from Google App Passwords (e.g., "abcd efgh ijkl mnop" -> "abcdefghijklmnop")
+  const pass = rawPass.replace(/\s+/g, '');
+
+  // Support explicit SMTP_SECURE flag or infer true for port 465 SSL
+  const isSecureEnv = process.env.SMTP_SECURE !== undefined && process.env.SMTP_SECURE !== '';
+  const secure = isSecureEnv ? process.env.SMTP_SECURE === 'true' : port === 465;
+
+  if (host && user && pass) {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user,
+        pass,
+      },
+      tls: {
+        rejectUnauthorized: true,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+
     return {
-      transporter: nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-      }),
+      transporter,
       isLiveSmtp: true,
-      providerInfo: `Live SMTP (${host}:${port})`,
+      hasCredentials: true,
+      providerInfo: `Live SMTP (${host}:${port}${secure ? ' SSL' : ' STARTTLS'})`,
+      host,
+      port,
+      secure,
+      user,
     };
   }
 
-  // Resilient fallback transporter for dev/preview environments without active credentials
+  // If host and user exist but no password or pass is empty
+  if (host && user) {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user,
+        pass: pass || '',
+      },
+      tls: {
+        rejectUnauthorized: true,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+
+    return {
+      transporter,
+      isLiveSmtp: true,
+      hasCredentials: false,
+      providerInfo: `Live SMTP (${host}:${port}${secure ? ' SSL' : ' STARTTLS'})`,
+      host,
+      port,
+      secure,
+      user,
+    };
+  }
+
+  // Resilient fallback transporter for dev/preview environments without active SMTP credentials
   return {
     transporter: nodemailer.createTransport({
       streamTransport: true,
       newline: 'windows',
     }),
     isLiveSmtp: false,
-    providerInfo: 'Dev/Local Stream Transport (configure SMTP_HOST & SMTP_USER in .env for live outbound email)',
+    hasCredentials: false,
+    providerInfo: 'Dev Stream Transport (configure SMTP_PASS in environment variables for live SMTP)',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    user: 'intelligenz@drkvsrit.ac.in',
   };
 }
 
@@ -639,9 +713,13 @@ async function sendEventPassEmail(
   const deptName = settings.department_name || 'Department of CSE (AIML) & AI';
   const collegeName =
     settings.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY';
-  const senderName = settings.email_sender_name || 'IntelliGenZ Club';
+  const senderName =
+    process.env.SMTP_FROM_NAME || settings.email_sender_name || 'IntelliGenZ Club';
   const senderEmail =
-    settings.email_sender_address || process.env.SMTP_FROM || 'intelligenz@drkvsrit.ac.in';
+    process.env.SMTP_FROM_EMAIL ||
+    settings.email_sender_address ||
+    process.env.SMTP_FROM ||
+    'intelligenz@drkvsrit.ac.in';
   const fromAddress = `"${senderName}" <${senderEmail}>`;
 
   const subject = `Your Event Pass — ${event.title} | IntelliGenZ Club`;
@@ -845,12 +923,32 @@ function rateLimiter(limit: number, windowMs: number) {
 // ==========================================================
 // Configurable Session Timeout Settings
 // ==========================================================
-// 15 minutes inactivity timeout (900,000 ms)
-const ADMIN_IDLE_TIMEOUT = parseInt(process.env.ADMIN_IDLE_TIMEOUT || '', 10) || 15 * 60 * 1000;
-// 8 hours absolute maximum lifetime (28,800,000 ms)
-const ADMIN_MAX_SESSION_LIFETIME = parseInt(process.env.ADMIN_MAX_SESSION_LIFETIME || '', 10) || 8 * 60 * 60 * 1000;
+function parseSessionDuration(val: string | undefined, fallbackMs: number): number {
+  if (!val) return fallbackMs;
+  const trimmed = val.trim();
+  if (!trimmed) return fallbackMs;
+  if (/^\d+d$/i.test(trimmed)) {
+    return parseInt(trimmed, 10) * 24 * 60 * 60 * 1000;
+  }
+  if (/^\d+h$/i.test(trimmed)) {
+    return parseInt(trimmed, 10) * 60 * 60 * 1000;
+  }
+  if (/^\d+m$/i.test(trimmed)) {
+    return parseInt(trimmed, 10) * 60 * 1000;
+  }
+  if (/^\d+s$/i.test(trimmed)) {
+    return parseInt(trimmed, 10) * 1000;
+  }
+  const parsed = parseInt(trimmed, 10);
+  return isNaN(parsed) || parsed <= 0 ? fallbackMs : parsed;
+}
+
+// Inactivity timeout (default: 15 minutes / 900,000 ms)
+const ADMIN_IDLE_TIMEOUT = parseSessionDuration(process.env.ADMIN_IDLE_TIMEOUT, 15 * 60 * 1000);
+// 24 hours absolute maximum lifetime (86,400,000 ms)
+const ADMIN_MAX_SESSION_LIFETIME = parseSessionDuration(process.env.ADMIN_MAX_SESSION_LIFETIME, 24 * 60 * 60 * 1000);
 // 2 minutes session warning threshold (120,000 ms)
-const ADMIN_SESSION_WARNING = parseInt(process.env.ADMIN_SESSION_WARNING || '', 10) || 2 * 60 * 1000;
+const ADMIN_SESSION_WARNING = parseSessionDuration(process.env.ADMIN_SESSION_WARNING, 2 * 60 * 1000);
 
 // Active session storage
 interface ActiveSession {
@@ -967,15 +1065,15 @@ function adminAuthMiddleware(req: AuthenticatedRequest, res: Response, next: Nex
 
   const now = Date.now();
 
-  // 1. Check absolute session lifetime (8 hours default)
+  // 1. Check absolute session lifetime (24 hours default)
   const sessionCreatedAt = session.createdAt || session.lastActivityAt || now;
   if ((now - sessionCreatedAt) > ADMIN_MAX_SESSION_LIFETIME || (session.expiresAt && session.expiresAt <= now)) {
     activeSessions.delete(token);
     saveSessions(activeSessions);
     res.clearCookie('intelligenz_session', { path: '/' });
-    logAdminAction('Session Expired', 'Auth', session.userId, 'Session reached maximum lifetime limit (8 hours)', session.email, req);
+    logAdminAction('Session Expired', 'Auth', session.userId, 'Session reached maximum lifetime limit (24 hours)', session.email, req);
     res.status(401).json({
-      error: 'Session expired: Maximum session lifetime reached (8 hours). Please sign in again.',
+      error: 'Session expired: Maximum session lifetime reached (24 hours). Please sign in again.',
       code: 'SESSION_MAX_LIFETIME',
     });
     return;
@@ -1996,7 +2094,10 @@ async function startServer() {
     adminUser.updated_at = new Date().toISOString();
     saveDatabase(db);
 
-    // Issue cryptographically secure session token with idle and max lifetime bounds
+    // Invalidate any previous sessions for this administrator so each login starts with a fresh, independent session
+    invalidateUserSessions(adminUser.id);
+
+    // Issue cryptographically secure session token with independent 24-hour maximum lifetime
     const now = Date.now();
     const sessionToken = `session_${crypto.randomBytes(32).toString('hex')}`;
     const expiresAt = now + ADMIN_MAX_SESSION_LIFETIME;
@@ -3368,9 +3469,200 @@ async function startServer() {
       updatedSettings.is_recruitment_open = !!req.body.is_recruitment_open;
       updatedSettings.join_us_status = !!req.body.is_recruitment_open;
     }
+    if (req.body.automated_email_enabled !== undefined) {
+      updatedSettings.automated_email_enabled = !!req.body.automated_email_enabled;
+    }
     db.settings = updatedSettings;
     saveDatabase(db);
     res.json(db.settings);
+  });
+
+  // Admin Email Management & Status (SUPER_ADMIN, ADMIN)
+  adminRouter.get('/email/status', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    const { transporter, isLiveSmtp, providerInfo, host, port, secure, user } = getEmailTransporter();
+    
+    let isConnected = false;
+    let connectionError: string | null = null;
+
+    const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '').trim();
+    if (!rawPass) {
+      connectionError = 'Google App Password (SMTP_PASS) is not configured. Please set a 16-character App Password.';
+    } else {
+      try {
+        await transporter.verify();
+        isConnected = true;
+      } catch (err: any) {
+        isConnected = false;
+        connectionError = sanitizeSmtpError(err);
+      }
+    }
+
+    const senderName =
+      process.env.SMTP_FROM_NAME || db.settings.email_sender_name || 'IntelliGenZ Club';
+    const senderAddress =
+      process.env.SMTP_FROM ||
+      process.env.SMTP_FROM_EMAIL ||
+      db.settings.email_sender_address ||
+      'intelligenz@drkvsrit.ac.in';
+
+    res.json({
+      enabled: db.settings.automated_email_enabled !== false,
+      is_live_smtp: isLiveSmtp,
+      connected: isConnected,
+      smtp_status: isConnected ? 'Connected' : 'Not Connected',
+      connection_error: connectionError,
+      provider_info: providerInfo,
+      sender_name: senderName,
+      sender_address: senderAddress,
+      smtp_host: host || 'smtp.gmail.com',
+      smtp_port: port || 465,
+      smtp_secure: secure,
+      smtp_user_masked: user ? `${user.slice(0, 3)}***@${user.split('@')[1] || 'drkvsrit.ac.in'}` : null,
+      total_sent_this_session: sentPassEmailRegistrations.size,
+    });
+  });
+
+  adminRouter.post('/email/test', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
+    const { email } = req.body;
+    const targetEmail = (email || req.adminUser?.email || '').trim();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      res.status(400).json({ error: 'Please provide a valid recipient email address for testing.' });
+      return;
+    }
+
+    const { transporter, isLiveSmtp, providerInfo } = getEmailTransporter();
+    const senderName =
+      process.env.SMTP_FROM_NAME || db.settings.email_sender_name || 'IntelliGenZ Club';
+    const senderAddress =
+      process.env.SMTP_FROM ||
+      process.env.SMTP_FROM_EMAIL ||
+      db.settings.email_sender_address ||
+      'intelligenz@drkvsrit.ac.in';
+    const fromAddress = `"${senderName}" <${senderAddress}>`;
+
+    const subject = 'IntelliGenZ SMTP Test Email';
+    const textBody = 'This is a test email from the IntelliGenZ Club email system. SMTP configuration is working correctly.';
+    const htmlBody = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>IntelliGenZ SMTP Test Email</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0A0B0E; color: #E5E7EB; margin: 0; padding: 24px;">
+  <div style="max-width: 540px; margin: 0 auto; background-color: #0D1017; border: 1px solid #1A1C23; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <div style="background-color: #05070A; border-bottom: 2px solid #00E5FF; padding: 20px 24px; text-align: center;">
+      <h1 style="color: #00E5FF; font-size: 20px; font-weight: 800; margin: 0; letter-spacing: 0.5px;">IntelliGenZ Club</h1>
+      <p style="color: #9CA3AF; font-size: 11px; margin: 4px 0 0; text-transform: uppercase;">DR. K. V. Subba Reddy Institute of Technology</p>
+    </div>
+    <div style="padding: 24px;">
+      <h2 style="font-size: 16px; font-weight: 700; color: #10B981; margin-top: 0; margin-bottom: 12px;">
+        ✓ SMTP Configuration Verified
+      </h2>
+      <p style="font-size: 13.5px; line-height: 1.6; color: #D1D5DB; margin-bottom: 20px;">
+        ${textBody}
+      </p>
+      <div style="background-color: #11141D; border: 1px solid #1F2430; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #9CA3AF; line-height: 1.6;">
+        <div><strong style="color: #FFFFFF;">Host:</strong> smtp.gmail.com:465 (SSL)</div>
+        <div><strong style="color: #FFFFFF;">Sender:</strong> ${senderAddress}</div>
+        <div><strong style="color: #FFFFFF;">Recipient:</strong> ${targetEmail}</div>
+        <div><strong style="color: #FFFFFF;">Timestamp:</strong> ${new Date().toUTCString()}</div>
+      </div>
+      <p style="font-size: 12px; color: #6B7280; margin-top: 20px; margin-bottom: 0;">
+        Regards,<br>
+        <strong style="color: #FFFFFF;">IntelliGenZ Club</strong><br>
+        Department of CSE (AIML) &amp; AI
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to: targetEmail,
+        subject,
+        text: textBody,
+        html: htmlBody,
+      });
+
+      logAdminAction(
+        'Test Email Sent',
+        'Settings',
+        'email_system',
+        `Admin dispatched SMTP test email to ${targetEmail} (messageId: ${info.messageId || 'ok'})`,
+        req.adminUser?.email,
+        req
+      );
+
+      res.json({
+        success: true,
+        message: `Test email successfully sent to ${targetEmail}. SMTP configuration is working correctly.`,
+        messageId: info.messageId,
+        simulated: !isLiveSmtp,
+      });
+    } catch (err: any) {
+      console.error('[Admin Test Email Error]', err);
+      const safeError = sanitizeSmtpError(err);
+      res.status(500).json({ error: safeError || 'Failed to dispatch test email via SMTP.' });
+    }
+  });
+
+  adminRouter.post('/email/resend/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
+    const regId = req.params.id;
+    const reg = db.registrations.find((r) => r.id === regId);
+    if (!reg) {
+      res.status(404).json({ error: 'Event registration not found.' });
+      return;
+    }
+
+    const event = db.events.find((e) => e.id === reg.event_id) || {
+      id: reg.event_id,
+      title: reg.event_title || 'IntelliGenZ Technical Event',
+      slug: 'event',
+      description: '',
+      short_description: '',
+      event_image: '',
+      date: new Date().toISOString().slice(0, 10),
+      start_time: '10:00 AM',
+      end_time: '04:00 PM',
+      venue: 'Campus Auditorium',
+      category: 'Workshop' as const,
+      maximum_participants: 100,
+      current_participants: 1,
+      status: 'Upcoming' as const,
+      featured: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      const result = await sendEventPassEmail(event, reg, db.settings, reg.email);
+      if (result.success) {
+        reg.email_status = 'sent';
+        reg.email_sent_at = new Date().toISOString();
+        saveDatabase(db);
+        logAdminAction(
+          'Event Pass Resent',
+          'Registration',
+          reg.id,
+          `Admin resent Event Pass email to ${reg.email} for registration ${reg.id}`,
+          req.adminUser?.email,
+          req
+        );
+        res.json({
+          success: true,
+          message: `Event Pass email successfully re-sent to ${reg.email}.`,
+        });
+      } else {
+        reg.email_status = 'failed';
+        reg.email_error = result.error;
+        saveDatabase(db);
+        res.status(500).json({ error: result.error || 'Failed to re-send event pass email.' });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to re-send event pass email.' });
+    }
   });
 
   // ==========================================

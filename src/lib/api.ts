@@ -290,7 +290,7 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Invalid administrator credentials.');
     authStorage.setToken(data.token);
     authStorage.setUser(data.user);
-    adminSessionCoordinator.resetSessionOnLogin();
+    adminSessionCoordinator.resetSessionOnLogin(data.sessionStart || Date.now());
     return data;
   },
 
@@ -322,6 +322,13 @@ export const api = {
       const data = await res.json();
       if (data.valid && data.user) {
         authStorage.setUser(data.user);
+        if (data.sessionStart && typeof data.sessionStart === 'number') {
+          try {
+            localStorage.setItem('intelligenz_admin_session_start', data.sessionStart.toString());
+          } catch {
+            // ignore
+          }
+        }
         return true;
       }
       authStorage.clearToken();
@@ -892,10 +899,16 @@ export const api = {
   adminGetEmailStatus: async (): Promise<{
     enabled: boolean;
     is_live_smtp: boolean;
+    connected?: boolean;
+    smtp_status?: 'Connected' | 'Not Connected' | 'Not Configured';
+    connection_error?: string | null;
     provider_info: string;
     sender_name: string;
     sender_address: string;
     smtp_host: string | null;
+    smtp_port?: number | null;
+    smtp_secure?: boolean;
+    smtp_user_masked?: string | null;
     total_sent_this_session: number;
   }> => {
     const res = await fetch('/api/admin/email/status', {
@@ -913,6 +926,16 @@ export const api = {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Failed to send test email');
+    return result;
+  },
+
+  adminResendEventPassEmail: async (registrationId: string): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`/api/admin/email/resend/${encodeURIComponent(registrationId)}`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to resend event pass email');
     return result;
   },
 
