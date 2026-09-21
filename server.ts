@@ -11,7 +11,6 @@ if (fs.existsSync(path.resolve(process.cwd(), '.env.example'))) {
 import express, { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import {
   INITIAL_SETTINGS,
@@ -516,6 +515,7 @@ async function generateEventPassPdf(
   reg: EventRegistration,
   settings: SiteSettings
 ): Promise<Buffer> {
+  const PDFDocument = (await import('pdfkit')).default;
   const qrPayload =
     reg.qr_payload || (reg.qr_token ? `ATTENDANCE:${reg.qr_token}` : `ATTENDANCE:${reg.id}`);
   const qrBuffer = await QRCode.toBuffer(qrPayload, {
@@ -1244,11 +1244,25 @@ app.use((req, res, next) => {
 
   // Health check
   app.get('/api/health', (req, res) => {
+    const isDbConfigured = Boolean(db && db.settings && Array.isArray(db.admin_users));
+    const isAuthConfigured = Boolean(process.env.ADMIN_SECRET || process.env.SESSION_SECRET || ADMIN_SECRET);
+    const isSmtpConfigured = Boolean(process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.SMTP_PASSWORD));
+    const isSessionConfigured = Boolean(ADMIN_MAX_SESSION_LIFETIME && ADMIN_IDLE_TIMEOUT);
+
     res.json({
       status: 'ok',
+      success: true,
       club: 'INTELLIGENZ',
       department: 'Department of CSE (AIML) & AI',
       college: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+      runtime: isVercel ? 'vercel-serverless' : 'node-server',
+      services: {
+        database: isDbConfigured ? 'configured' : 'unavailable',
+        authentication: isAuthConfigured ? 'configured' : 'unavailable',
+        session: isSessionConfigured ? 'configured' : 'unavailable',
+        smtp: isSmtpConfigured ? 'configured' : 'unconfigured_fallback',
+      },
+      adminUsersCount: db.admin_users ? db.admin_users.length : 0,
       timestamp: new Date().toISOString(),
     });
   });

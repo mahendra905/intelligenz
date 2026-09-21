@@ -2,7 +2,6 @@ import app from '../server';
 
 export default function handler(req: any, res: any) {
   try {
-    // When Vercel rewrites /api/(.*) to /api/index, restore the target request path
     const originalPath =
       req.headers['x-matched-path'] ||
       req.headers['x-forwarded-uri'] ||
@@ -13,7 +12,6 @@ export default function handler(req: any, res: any) {
       req.url = originalPath;
     }
 
-    // Ensure req.url starts with /api if it was stripped
     if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/uploads') && !req.url.startsWith('/club-logo')) {
       req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
     }
@@ -30,5 +28,3 @@ export default function handler(req: any, res: any) {
     }
   }
 }
-
-
