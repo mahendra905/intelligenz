@@ -13,8 +13,6 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
-import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 import {
   INITIAL_SETTINGS,
   INITIAL_STATS,
@@ -2119,7 +2117,11 @@ app.use((req, res, next) => {
       console.log(`[Auth Diagnostics] ADMIN_SECRET configured: ${Boolean(process.env.ADMIN_SECRET || process.env.SESSION_SECRET)}, Bootstrap Admin configured: ${Boolean(process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_BOOTSTRAP_EMAIL)}, Database admins count: ${db.admin_users.length}`);
 
       if (!identifier || !password) {
-        res.status(400).json({ error: 'Please provide your administrator email or username, and password.' });
+        res.status(400).json({
+          success: false,
+          error: 'Please provide your administrator email or username, and password.',
+          message: 'Please provide your administrator email or username, and password.',
+        });
         return;
       }
 
@@ -2133,26 +2135,42 @@ app.use((req, res, next) => {
       if (!adminUser) {
         console.warn(`[Auth] Login rejected: Unknown administrator identifier "${identifier}".`);
         logAdminAction('Admin Login Failed', 'Auth', identifier, `Failed login attempt for unknown account '${identifier}'`, identifier, req);
-        res.status(401).json({ error: 'Invalid administrator credentials.' });
+        res.status(401).json({
+          success: false,
+          error: 'Invalid administrator credentials.',
+          message: 'Invalid credentials',
+        });
         return;
       }
 
       if (adminUser.status === 'INACTIVE') {
         console.warn(`[Auth] Login rejected: Account "${adminUser.username}" is INACTIVE.`);
         logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' is marked INACTIVE`, adminUser.email, req);
-        res.status(403).json({ error: 'Your administrator account is currently inactive. Please contact the Super Administrator.' });
+        res.status(403).json({
+          success: false,
+          error: 'Your administrator account is currently inactive. Please contact the Super Administrator.',
+          message: 'Your administrator account is inactive.',
+        });
         return;
       }
 
       if (adminUser.status === 'REVOKED') {
         console.warn(`[Auth] Login rejected: Account "${adminUser.username}" is REVOKED.`);
         logAdminAction('Admin Login Blocked', 'Auth', adminUser.id, `Login blocked: Account '${adminUser.username}' access is REVOKED`, adminUser.email, req);
-        res.status(403).json({ error: 'Your administrator access has been revoked. Contact the department administration.' });
+        res.status(403).json({
+          success: false,
+          error: 'Your administrator access has been revoked. Contact the department administration.',
+          message: 'Your administrator access has been revoked.',
+        });
         return;
       }
 
       if (adminUser.status !== 'ACTIVE') {
-        res.status(403).json({ error: 'Invalid administrator credentials.' });
+        res.status(403).json({
+          success: false,
+          error: 'Invalid administrator credentials.',
+          message: 'Invalid credentials',
+        });
         return;
       }
 
@@ -2161,7 +2179,11 @@ app.use((req, res, next) => {
       if (calculatedHash !== adminUser.password_hash) {
         console.warn(`[Auth] Login rejected: Incorrect password for "${adminUser.username}".`);
         logAdminAction('Admin Login Failed', 'Auth', adminUser.id, `Failed login attempt: Incorrect password for '${adminUser.username}'`, adminUser.email, req);
-        res.status(401).json({ error: 'Invalid administrator credentials.' });
+        res.status(401).json({
+          success: false,
+          error: 'Invalid administrator credentials.',
+          message: 'Invalid credentials',
+        });
         return;
       }
 
@@ -2212,6 +2234,7 @@ app.use((req, res, next) => {
 
       res.json({
         success: true,
+        message: 'Login successful',
         token: sessionToken,
         sessionStart: now,
         idleTimeout: ADMIN_IDLE_TIMEOUT,
@@ -2230,7 +2253,11 @@ app.use((req, res, next) => {
       });
     } catch (err: any) {
       console.error('[Auth Error] Uncaught error in login handler:', err?.message || err);
-      res.status(500).json({ error: 'An unexpected server error occurred during authentication.' });
+      res.status(500).json({
+        success: false,
+        error: 'Authentication service temporarily unavailable',
+        message: 'Authentication service temporarily unavailable',
+      });
     }
   });
 
@@ -4871,6 +4898,7 @@ CREATE POLICY "Allow public contact message submit" ON public.contact_messages F
     // Vite middleware for development vs static build in production
     if (process.env.NODE_ENV !== 'production') {
       const isHmrDisabled = process.env.DISABLE_HMR === 'true';
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: {
           middlewareMode: true,
