@@ -1,24 +1,13 @@
 [
   {
-    "token": "session_5a0a54ec7c299654b9389e6de3ea0208a24e4576dbf7b9877c2a0e59a1122a81",
+    "token": "session_usr-admin-primary:1789987177305:1790015977305_edc85f4ba865bc0bb3cdc21b2427dc30cabb35f1150dc78fafc19003d5f1a44a",
     "userId": "usr-admin-primary",
     "username": "superadmin",
     "email": "mahibittu2006@gmail.com",
     "role": "SUPER_ADMIN",
-    "createdAt": 1789900464897,
-    "lastActivityAt": 1789900487784,
-    "expiresAt": 1789929264897,
-    "mustChangePassword": false
-  },
-  {
-    "token": "session_5a8e8720285c026c05dac91484225c50496ba9c948dbba006774bc310b2e70ca",
-    "userId": "usr-admin-primary",
-    "username": "superadmin",
-    "email": "mahibittu2006@gmail.com",
-    "role": "SUPER_ADMIN",
-    "createdAt": 1789900755226,
-    "lastActivityAt": 1789900755226,
-    "expiresAt": 1789929555226,
+    "createdAt": 1789987177305,
+    "lastActivityAt": 1789987177305,
+    "expiresAt": 1790015977305,
     "mustChangePassword": false
   }
 ]

@@ -1,7 +1,7 @@
 import http from 'http';
 import path from 'path';
 import express from 'express';
-import app from './api/_app';
+import app from './api/index';
 
 const PORT = 3000;
 const httpServer = http.createServer(app);
