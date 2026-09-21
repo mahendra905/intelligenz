@@ -602,8 +602,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-20T11:04:50.843Z",
-      "last_login_at": "2026-09-20T11:04:50.843Z",
+      "updated_at": "2026-09-21T09:33:44.627Z",
+      "last_login_at": "2026-09-21T09:33:44.627Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -817,6 +817,26 @@
     }
   ],
   "audit_logs": [
+    {
+      "id": "log-1789986638363-th5f6",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "wrong_user",
+      "admin_email": "wrong_user",
+      "details": "Failed login attempt for unknown account 'wrong_user'",
+      "timestamp": "2026-09-21T10:30:38.363Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789983224630-ye25n",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T09:33:44.630Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1789902290844-ulb4v",
       "action": "Admin Login Success",
