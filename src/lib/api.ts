@@ -200,6 +200,8 @@ export const api = {
     roll_number: string;
     team_name?: string;
     team_members?: TeamMemberRegistration[];
+    event_id?: string;
+    event_slug?: string;
   }): Promise<{
     success: boolean;
     message: string;
@@ -210,10 +212,14 @@ export const api = {
     email_sent?: boolean;
     email_status?: string;
   }> => {
-    const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/register`, {
+    const cleanEventId = String(eventId || '').trim();
+    const res = await fetch(`/api/events/${encodeURIComponent(cleanEventId)}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        event_id: data.event_id || cleanEventId,
+      }),
     });
     return safeJson(res, 'Registration failed');
   },

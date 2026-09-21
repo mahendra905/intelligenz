@@ -23,6 +23,7 @@ import {
   syncDatabaseToSupabase,
   upsertSupabaseRecord,
   deleteSupabaseRecord,
+  checkSupabaseTablesExist,
 } from './supabaseRepo.js';
 export type EventStatus =
   | 'Upcoming'
@@ -1209,7 +1210,11 @@ function loadDatabase(): DatabaseSchema {
         needsSave = true;
       }
 
-      const normalizedEvents: Event[] = (parsed.events || INITIAL_EVENTS).map((evt: Event) => {
+      const rawEvents = (Array.isArray(parsed.events) && parsed.events.length > 0)
+        ? parsed.events
+        : INITIAL_EVENTS;
+
+      const normalizedEvents: Event[] = rawEvents.map((evt: Event) => {
         const pType = evt.participation_type || (evt.category === 'Hackathon' ? 'TEAM' : 'SOLO');
         return {
           ...evt,
@@ -1344,26 +1349,146 @@ async function ensureSupabaseHydrated(force = false): Promise<void> {
 
   try {
     const supabaseData = await loadStateFromSupabase();
-    if (supabaseData && (supabaseData.events.length > 0 || supabaseData.admin_users.length > 0)) {
-      db = {
-        ...db,
-        ...supabaseData,
-        admin_users: supabaseData.admin_users.length > 0 ? supabaseData.admin_users : db.admin_users,
-        settings: (supabaseData.settings && Object.keys(supabaseData.settings).length > 0) ? supabaseData.settings : db.settings,
-        stats: (supabaseData.stats && Object.keys(supabaseData.stats).length > 0) ? supabaseData.stats : db.stats,
-      };
-      isSupabaseHydrated = true;
-      lastHydrationTime = now;
-    } else if (supabaseData && supabaseData.events.length === 0) {
-      // Auto-seed initial data to Supabase
-      console.log('[Supabase Auto-Seed] Supabase tables connected, seeding database...');
-      await syncDatabaseToSupabase(db);
+    if (supabaseData) {
+      if (Array.isArray(supabaseData.events) && supabaseData.events.length > 0) {
+        db.events = supabaseData.events;
+      }
+      if (Array.isArray(supabaseData.admin_users) && supabaseData.admin_users.length > 0) {
+        db.admin_users = supabaseData.admin_users;
+      }
+      if (supabaseData.settings && Object.keys(supabaseData.settings).length > 0) {
+        db.settings = supabaseData.settings;
+      }
+      if (supabaseData.stats && Object.keys(supabaseData.stats).length > 0) {
+        db.stats = supabaseData.stats;
+      }
+      if (Array.isArray(supabaseData.announcements) && supabaseData.announcements.length > 0) {
+        db.announcements = supabaseData.announcements;
+      }
+      if (Array.isArray(supabaseData.team) && supabaseData.team.length > 0) {
+        db.team = supabaseData.team;
+      }
+      if (Array.isArray(supabaseData.projects) && supabaseData.projects.length > 0) {
+        db.projects = supabaseData.projects;
+      }
+      if (Array.isArray(supabaseData.gallery) && supabaseData.gallery.length > 0) {
+        db.gallery = supabaseData.gallery;
+      }
+      if (Array.isArray(supabaseData.community_impact_stats) && supabaseData.community_impact_stats.length > 0) {
+        db.community_impact_stats = supabaseData.community_impact_stats;
+      }
       isSupabaseHydrated = true;
       lastHydrationTime = now;
     }
   } catch (err: any) {
     console.warn('[Supabase Hydration Error]:', err?.message);
   }
+}
+
+/**
+ * Robust Canonical Event Lookup:
+ * Queries Supabase directly first by canonical ID or slug, then falls back to local cache.
+ */
+export async function findEventByIdOrSlug(identifier: string): Promise<Event | null> {
+  const cleanId = String(identifier || '').trim();
+  if (!cleanId) return null;
+
+  // 1. Direct Supabase query (canonical database source of truth)
+  if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        // Query by id
+        const { data: byId, error: errId } = await client
+          .from('events')
+          .select('*')
+          .eq('id', cleanId)
+          .maybeSingle();
+
+        if (byId && !errId) {
+          const pType = byId.participation_type || 'SOLO';
+          const normalized: Event = {
+            ...byId,
+            participation_type: pType,
+            min_team_size: byId.min_team_size || (pType === 'SOLO' ? 1 : 2),
+            max_team_size: byId.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
+          };
+          const idx = db.events.findIndex((e) => e.id === normalized.id);
+          if (idx !== -1) {
+            db.events[idx] = normalized;
+          } else {
+            db.events.unshift(normalized);
+          }
+          return normalized;
+        }
+
+        // Query by slug
+        const { data: bySlug, error: errSlug } = await client
+          .from('events')
+          .select('*')
+          .eq('slug', cleanId)
+          .maybeSingle();
+
+        if (bySlug && !errSlug) {
+          const pType = bySlug.participation_type || 'SOLO';
+          const normalized: Event = {
+            ...bySlug,
+            participation_type: pType,
+            min_team_size: bySlug.min_team_size || (pType === 'SOLO' ? 1 : 2),
+            max_team_size: bySlug.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
+          };
+          const idx = db.events.findIndex((e) => e.id === normalized.id);
+          if (idx !== -1) {
+            db.events[idx] = normalized;
+          } else {
+            db.events.unshift(normalized);
+          }
+          return normalized;
+        }
+
+        // Try case-insensitive slug query as extra resilience
+        const { data: bySlugIlike } = await client
+          .from('events')
+          .select('*')
+          .ilike('slug', cleanId)
+          .maybeSingle();
+
+        if (bySlugIlike) {
+          const pType = bySlugIlike.participation_type || 'SOLO';
+          const normalized: Event = {
+            ...bySlugIlike,
+            participation_type: pType,
+            min_team_size: bySlugIlike.min_team_size || (pType === 'SOLO' ? 1 : 2),
+            max_team_size: bySlugIlike.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
+          };
+          return normalized;
+        }
+      } catch (err: any) {
+        console.warn('[Supabase Event Lookup Warning]:', err?.message);
+      }
+    }
+  }
+
+  // 2. Query in-memory / local database
+  const localEvent = db.events.find(
+    (e) => e.id === cleanId || e.slug === cleanId || e.slug?.toLowerCase() === cleanId.toLowerCase()
+  );
+  if (localEvent) {
+    return localEvent;
+  }
+
+  // 3. Fallback search by title
+  const cleanLower = cleanId.toLowerCase();
+  const byTitle = db.events.find(
+    (e) =>
+      e.title.toLowerCase() === cleanLower ||
+      e.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') === cleanLower
+  );
+  if (byTitle) {
+    return byTitle;
+  }
+
+  return null;
 }
 
 
@@ -2336,13 +2461,42 @@ app.use(async (req, res, next) => {
     });
   });
 
-  // EVENTS
-  app.get('/api/events', (req, res) => {
+  // EVENTS (Public)
+  app.get('/api/events', async (req, res) => {
     const category = req.query.category as string;
     const status = req.query.status as string;
     const featured = req.query.featured === 'true';
 
-    let result = [...db.events];
+    let eventsList = [...db.events];
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client
+            .from('events')
+            .select('*')
+            .order('date', { ascending: false });
+
+          if (!error && Array.isArray(data) && data.length > 0) {
+            eventsList = data.map((evt: any) => {
+              const pType = evt.participation_type || 'SOLO';
+              return {
+                ...evt,
+                participation_type: pType,
+                min_team_size: evt.min_team_size || (pType === 'SOLO' ? 1 : 2),
+                max_team_size: evt.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
+              };
+            });
+            db.events = eventsList;
+          }
+        } catch (err: any) {
+          console.warn('[Supabase GET /api/events Warning]:', err?.message);
+        }
+      }
+    }
+
+    let result = eventsList;
     if (category && category !== 'All') {
       result = result.filter((e) => e.category === category);
     }
@@ -2358,8 +2512,8 @@ app.use(async (req, res, next) => {
     res.json(result);
   });
 
-  app.get('/api/events/:slug', (req, res) => {
-    const event = db.events.find((e) => e.slug === req.params.slug || e.id === req.params.slug);
+  app.get('/api/events/:slug', async (req, res) => {
+    const event = await findEventByIdOrSlug(req.params.slug);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -2409,9 +2563,8 @@ app.use(async (req, res, next) => {
   }
 
   // Event Registrations candidates for winners selection
-  app.get('/api/events/:id/registrations', (req, res) => {
-    const eventId = req.params.id;
-    const event = db.events.find((e) => e.id === eventId || e.slug === eventId);
+  app.get('/api/events/:id/registrations', async (req, res) => {
+    const event = await findEventByIdOrSlug(req.params.id);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -2421,9 +2574,8 @@ app.use(async (req, res, next) => {
   });
 
   // Event Winners (Public)
-  app.get('/api/events/:id/winners', (req, res) => {
-    const eventId = req.params.id;
-    const event = db.events.find((e) => e.id === eventId || e.slug === eventId);
+  app.get('/api/events/:id/winners', async (req, res) => {
+    const event = await findEventByIdOrSlug(req.params.id);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -2439,23 +2591,26 @@ app.use(async (req, res, next) => {
 
   // Event Registration (Public)
   app.post(['/api/events/:id/register', '/api/events/:id/registrations', '/api/registrations'], rateLimiter(45, 60000), async (req, res) => {
-    const eventId = req.params.id || req.body.event_id || req.body.eventId;
+    const eventId = req.params.id || req.body.event_id || req.body.eventId || req.body.slug || req.body.event_slug;
     if (!eventId) {
       res.status(400).json({ error: 'Event ID is required for registration.' });
       return;
     }
 
-    const event = db.events.find((e) => e.id === eventId || e.slug === eventId);
+    const event = await findEventByIdOrSlug(eventId);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
     }
 
+    const eventStatusStr = String(event.status || '');
     const isRegOpen =
       event.status === 'Registration Open' ||
       (event as any).enable_registrations === true ||
       (event as any).is_registration_open === true ||
       event.status === 'Upcoming' ||
+      eventStatusStr === 'Live' ||
+      eventStatusStr === 'Active' ||
       !event.status;
 
     if (!isRegOpen) {
@@ -2667,6 +2822,44 @@ app.use(async (req, res, next) => {
     db.registrations.unshift(newReg);
     event.current_participants = (event.current_participants || 0) + totalParticipants;
     saveDatabase(db);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        (async () => {
+          try {
+            await client.from('registrations').insert({
+              id: newReg.id,
+              event_id: event.id,
+              event_title: event.title,
+              full_name: newReg.full_name,
+              participant_name: newReg.participant_name,
+              email: newReg.email,
+              phone: newReg.phone,
+              department: newReg.department,
+              year: newReg.year,
+              roll_number: newReg.roll_number,
+              participation_type: newReg.participation_type,
+              team_name: newReg.team_name,
+              team_members: newReg.team_members || [],
+              ticket_code: newReg.ticket_code,
+              qr_token: newReg.qr_token,
+              qr_payload: newReg.qr_payload,
+              status: newReg.status,
+              email_status: newReg.email_status,
+              created_at: newReg.created_at,
+            });
+
+            await client
+              .from('events')
+              .update({ current_participants: event.current_participants })
+              .eq('id', event.id);
+          } catch (err: any) {
+            console.warn('[Supabase Direct Registration Save Warning]:', err?.message);
+          }
+        })();
+      }
+    }
 
     // ========================================================================
     // AUTOMATED EVENT-PASS EMAIL FEATURE

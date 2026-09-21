@@ -427,7 +427,9 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
         roll_number: (m.roll_number || '').trim().toUpperCase(),
       }));
 
-      const res = await api.registerForEvent(event.id, {
+      const targetEventId = event.id || (event as any).eventId || (event as any)._id || event.slug;
+
+      const res = await api.registerForEvent(targetEventId, {
         full_name: fullName,
         email,
         phone,
@@ -436,6 +438,8 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
         roll_number: formattedRollNumber,
         team_name: pType !== 'SOLO' ? teamName : undefined,
         team_members: pType !== 'SOLO' ? formattedMembers : undefined,
+        event_id: event.id,
+        event_slug: event.slug,
       });
 
       setSuccessData(res);

@@ -104,7 +104,137 @@
       "updated_by": "Super Admin"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "evt-neurohack-2026",
+      "title": "NeuroHack 2026: 24-Hour State-Level AI Hackathon",
+      "slug": "neurohack-2026-ai-hackathon",
+      "short_description": "Build real-world AI, Machine Learning, and Computer Vision solutions in an intense 24-hour hackathon with cash prizes up to ₹50,000.",
+      "description": "NeuroHack 2026 is the flagship annual hackathon organized by the IntelliGenZ Club, Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology.\n\nStudents from engineering colleges across the state are invited to brainstorm, prototype, and build production-ready applications across 4 tracks:\n1. **Generative AI & LLM Agents**\n2. **Healthcare & Vision AI**\n3. **Smart Campus & Automation**\n4. **Open Innovation in Deep Tech**\n\nParticipants will receive mentorship from top industry engineers, free food, energy drinks, cloud compute credits, official participation certificates, and cash awards for winning teams.",
+      "event_image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80",
+      "date": "2026-09-25",
+      "start_time": "09:00 AM",
+      "end_time": "09:00 AM (+1 Day)",
+      "venue": "Main Auditorium & Advanced AI Labs, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
+      "category": "Hackathon",
+      "speaker": "Er. Rajesh Varma",
+      "speaker_bio": "Principal AI Architect at TechCorp Labs & Ex-Google Developer Expert",
+      "maximum_participants": 200,
+      "current_participants": 142,
+      "status": "Registration Open",
+      "featured": true,
+      "participation_type": "TEAM",
+      "min_team_size": 2,
+      "max_team_size": 4,
+      "highlights": [
+        "₹50,000 Total Prize Pool",
+        "24-Hour continuous high-speed internet & power backup",
+        "Direct interview opportunities with sponsoring startups",
+        "Cloud compute credits sponsored for all qualified teams"
+      ],
+      "created_at": "2026-08-15T10:00:00Z",
+      "updated_at": "2026-08-25T14:30:00Z"
+    },
+    {
+      "id": "evt-genai-masterclass",
+      "title": "Deep Dive: Building Autonomous Agents with Gemini & LangChain",
+      "slug": "genai-autonomous-agents-workshop",
+      "short_description": "Hands-on technical workshop on creating multimodal AI agents, retrieval augmented generation (RAG), and deploying intelligent web apps.",
+      "description": "Join us for a rigorous 1-day practical workshop hosted by the IntelliGenZ technical team. \n\nLearn how to harness cutting-edge foundation models, build robust RAG pipelines with vector databases, and deploy tool-calling autonomous AI agents. All participants will build and deploy a live working project during the session.",
+      "event_image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80",
+      "date": "2026-09-12",
+      "start_time": "10:00 AM",
+      "end_time": "04:30 PM",
+      "venue": "Seminar Hall 2, CSE Block, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
+      "category": "Workshop",
+      "speaker": "Dr. Priya Sundaram",
+      "speaker_bio": "Senior Research Scientist in NLP and Generative AI systems",
+      "maximum_participants": 90,
+      "current_participants": 86,
+      "status": "Registration Open",
+      "featured": true,
+      "participation_type": "SOLO",
+      "min_team_size": 1,
+      "max_team_size": 1,
+      "highlights": [
+        "Live code walkthrough and Colab notebooks provided",
+        "Hands-on building of RAG with Vector Search",
+        "Official Certificate of Completion from Department of CSE (AIML)"
+      ],
+      "created_at": "2026-08-20T08:00:00Z",
+      "updated_at": "2026-08-28T09:15:00Z"
+    },
+    {
+      "id": "evt-vision-robotics",
+      "title": "Edge AI & Computer Vision with OpenCV and Embedded Systems",
+      "slug": "edge-ai-computer-vision-bootcamp",
+      "short_description": "Discover how to run real-time object detection and facial recognition models on micro-controllers and edge hardware.",
+      "description": "A specialized bootcamp on embedded intelligence, robotic vision, and low-latency computer vision pipelines for real-time edge computing.",
+      "event_image": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80",
+      "date": "2026-10-08",
+      "start_time": "01:30 PM",
+      "end_time": "05:30 PM",
+      "venue": "Robotics & Embedded Systems Lab, 3rd Floor",
+      "category": "AI Bootcamp",
+      "speaker": "Prof. K. Venkatesh",
+      "speaker_bio": "Lead Researcher in Edge Computing & Embedded Systems",
+      "maximum_participants": 60,
+      "current_participants": 34,
+      "status": "Upcoming",
+      "featured": false,
+      "participation_type": "DUO",
+      "min_team_size": 2,
+      "max_team_size": 2,
+      "highlights": [
+        "Hardware kits supplied for live experimentations",
+        "Deploying YOLO models to Raspberry Pi & Jetson Nano",
+        "Open Q&A on robotics competitions"
+      ],
+      "created_at": "2026-08-22T11:00:00Z",
+      "updated_at": "2026-08-22T11:00:00Z"
+    },
+    {
+      "id": "evt-code-clash-2026",
+      "title": "CodeClash 2026: Algorithmic Duel & Speed Programming",
+      "slug": "code-clash-algorithmic-duel",
+      "short_description": "Competitive programming tournament featuring data structures, dynamic programming, and algorithm optimization battles.",
+      "description": "IntelliGenZ Club's monthly competitive programming arena. Speed, precision, and optimal complexity decide the winners.",
+      "event_image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
+      "date": "2026-08-10",
+      "start_time": "02:00 PM",
+      "end_time": "05:00 PM",
+      "venue": "Computer Center Lab 4",
+      "category": "Coding Contest",
+      "maximum_participants": 120,
+      "current_participants": 118,
+      "status": "Completed",
+      "featured": false,
+      "participation_type": "SOLO",
+      "min_team_size": 1,
+      "max_team_size": 1,
+      "results": "Top 3 winners felicitated with shields and certificates by the Head of Department.",
+      "winners": [
+        {
+          "position": "1st Place",
+          "name": "M. Sumanth (CSE AIML 3rd Year)",
+          "team_name": "BitMasters"
+        },
+        {
+          "position": "2nd Place",
+          "name": "G. Keerthana (CSE 2nd Year)",
+          "team_name": "AlgoHacks"
+        },
+        {
+          "position": "3rd Place",
+          "name": "K. Sai Teja (AI 3rd Year)",
+          "team_name": "Matrix"
+        }
+      ],
+      "certificates_available": true,
+      "created_at": "2026-07-28T09:00:00Z",
+      "updated_at": "2026-08-11T16:00:00Z"
+    }
+  ],
   "announcements": [
     {
       "id": "ann-recruitment-2026",

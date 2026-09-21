@@ -94,10 +94,62 @@ export async function deleteSupabaseRecord(
   }
 }
 
+let supabaseTablesExistCache: boolean | null = null;
+let lastTableCheckTime = 0;
+const TABLE_CHECK_TTL_MS = 60000; // Check at most once every 60 seconds
+
 /**
- * Load full state from Supabase if connected
+ * Check if the core tables exist in the Supabase schema
+ */
+export async function checkSupabaseTablesExist(force = false): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  const now = Date.now();
+  if (!force && supabaseTablesExistCache !== null && now - lastTableCheckTime < TABLE_CHECK_TTL_MS) {
+    return supabaseTablesExistCache;
+  }
+
+  try {
+    const { error } = await client.from('events').select('id').limit(1);
+    if (error) {
+      if (
+        error.code === 'PGRST205' ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('does not exist') ||
+        error.message?.includes('relation')
+      ) {
+        supabaseTablesExistCache = false;
+        lastTableCheckTime = now;
+        return false;
+      }
+      supabaseTablesExistCache = false;
+      lastTableCheckTime = now;
+      return false;
+    }
+    supabaseTablesExistCache = true;
+    lastTableCheckTime = now;
+    return true;
+  } catch {
+    supabaseTablesExistCache = false;
+    lastTableCheckTime = now;
+    return false;
+  }
+}
+
+/**
+ * Load full state from Supabase if connected and tables are ready
  */
 export async function loadStateFromSupabase(): Promise<DatabaseSchema | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const tablesExist = await checkSupabaseTablesExist();
+  if (!tablesExist) {
+    // Supabase is configured but tables have not been created yet
+    return null;
+  }
+
   const client = getSupabaseClient();
   if (!client) return null;
 
@@ -141,24 +193,39 @@ export async function loadStateFromSupabase(): Promise<DatabaseSchema | null> {
       client.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(200),
     ]);
 
-    // Check if critical tables exist
-    const hasAnyError =
-      eventsRes.error &&
-      (eventsRes.error.message.includes('does not exist') || eventsRes.error.message.includes('relation'));
-
-    if (hasAnyError) {
-      console.warn('[Supabase] Tables not found yet in PostgreSQL schema. Please run schema SQL.');
+    // Check if critical tables query failed
+    if (eventsRes.error) {
+      if (
+        eventsRes.error.code === 'PGRST205' ||
+        eventsRes.error.message?.includes('schema cache') ||
+        eventsRes.error.message?.includes('does not exist') ||
+        eventsRes.error.message?.includes('relation')
+      ) {
+        supabaseTablesExistCache = false;
+        return null;
+      }
+      console.warn('[Supabase] Failed to query events table from Supabase:', eventsRes.error.message);
       return null;
     }
 
     const settings = settingsRes.data && settingsRes.data.length > 0 ? (settingsRes.data[0] as AppSettings) : undefined;
     const stats = statsRes.data && statsRes.data.length > 0 ? (statsRes.data[0] as Stats) : undefined;
 
+    const loadedEvents = ((eventsRes.data as Event[]) || []).map((evt: any) => {
+      const pType = evt.participation_type || 'SOLO';
+      return {
+        ...evt,
+        participation_type: pType,
+        min_team_size: evt.min_team_size || (pType === 'SOLO' ? 1 : 2),
+        max_team_size: evt.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
+      };
+    });
+
     return {
       settings: settings || ({} as any),
       stats: stats || ({} as any),
       community_impact_stats: (impactStatsRes.data as CommunityImpactStat[]) || [],
-      events: (eventsRes.data as Event[]) || [],
+      events: loadedEvents,
       announcements: (announcementsRes.data as Announcement[]) || [],
       team: (teamRes.data as TeamMember[]) || [],
       projects: (projectsRes.data as Project[]) || [],

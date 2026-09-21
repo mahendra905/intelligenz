@@ -57,10 +57,15 @@ export async function testSupabaseConnection(): Promise<{ connected: boolean; er
     const { data, error } = await client.from('settings').select('*').limit(1);
     if (error && error.code !== 'PGRST116') {
       // Check if table just doesn't exist yet vs connection error
-      if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+      if (
+        error.code === 'PGRST205' ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('relation') ||
+        error.message?.includes('does not exist')
+      ) {
         return {
           connected: true,
-          message: 'Connected to Supabase PostgreSQL, but schema tables need to be created.',
+          message: 'Connected to Supabase PostgreSQL, but schema tables need to be created. Please run the schema SQL in your Supabase SQL Editor.',
         };
       }
       return {
