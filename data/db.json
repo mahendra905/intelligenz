@@ -602,8 +602,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-21T10:39:37.304Z",
-      "last_login_at": "2026-09-21T10:39:37.304Z",
+      "updated_at": "2026-09-21T10:49:04.999Z",
+      "last_login_at": "2026-09-21T10:49:04.998Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -817,6 +817,36 @@
     }
   ],
   "audit_logs": [
+    {
+      "id": "log-1789987745000-dodrr",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T10:49:05.000Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789987738147-o09lf",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "admin",
+      "admin_email": "admin",
+      "details": "Failed login attempt for unknown account 'admin'",
+      "timestamp": "2026-09-21T10:48:58.147Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789987697407-tuzza",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "mahigamingzone2@gmail.com",
+      "admin_email": "mahigamingzone2@gmail.com",
+      "details": "Failed login attempt for unknown account 'mahigamingzone2@gmail.com'",
+      "timestamp": "2026-09-21T10:48:17.407Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1789987177306-gmq2y",
       "action": "Admin Login Success",

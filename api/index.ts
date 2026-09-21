@@ -11,39 +11,964 @@ import express, { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import QRCode from 'qrcode';
-import {
-  INITIAL_SETTINGS,
-  INITIAL_STATS,
-  INITIAL_COMMUNITY_IMPACT_STATS,
-  INITIAL_EVENTS,
-  INITIAL_ANNOUNCEMENTS,
-  INITIAL_TEAM,
-  INITIAL_PROJECTS,
-  INITIAL_GALLERY,
-  INITIAL_CERTIFICATES,
-  INITIAL_SUBSCRIBERS,
-} from '../src/data/initialData';
-import {
-  Event,
-  Announcement,
-  TeamMember,
-  Project,
-  GalleryImage,
-  JoinApplication,
-  EventRegistration,
-  ContactMessage,
-  SiteStats,
-  SiteSettings,
-  CommunityImpactStat,
-  Certificate,
-  NewsletterSubscriber,
-  NewsletterBroadcast,
-  AttendanceRecord,
-  AuditLog,
-  ParticipationType,
-  TeamMemberRegistration,
-  EventWinner,
-} from '../src/types';
+export type EventStatus =
+  | 'Upcoming'
+  | 'Registration Open'
+  | 'Registration Closed'
+  | 'Ongoing'
+  | 'Completed'
+  | 'Cancelled';
+
+export type EventCategory =
+  | 'Workshop'
+  | 'Hackathon'
+  | 'Seminar'
+  | 'Coding Contest'
+  | 'AI Bootcamp'
+  | 'Orientation'
+  | 'Tech Talk'
+  | 'Technical Talk'
+  | 'Project Expo'
+  | 'Guest Lecture';
+
+export type ParticipationType = 'SOLO' | 'DUO' | 'TEAM';
+
+export interface TeamMemberRegistration {
+  full_name: string;
+  email: string;
+  roll_number: string;
+  department?: string;
+  year?: string;
+  phone?: string;
+}
+
+export interface EventWinner {
+  position: '1st' | '2nd' | '3rd' | string;
+  registration_id?: string;
+  name: string;
+  team_name?: string;
+  project_title?: string;
+  members?: string[];
+  members_detail?: TeamMemberRegistration[];
+}
+
+export interface Event {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  short_description: string;
+  event_image: string;
+  banner_image?: string;
+  date: string;
+  time?: string;
+  start_time: string;
+  end_time: string;
+  venue: string;
+  category: EventCategory;
+  speaker?: string;
+  speaker_bio?: string;
+  speaker_avatar?: string;
+  registration_url?: string;
+  registration_deadline?: string;
+  maximum_participants: number;
+  current_participants: number;
+  status: EventStatus;
+  featured: boolean;
+  participation_type?: ParticipationType;
+  min_team_size?: number;
+  max_team_size?: number;
+  highlights?: string[];
+  photos?: string[];
+  results?: string;
+  winners?: EventWinner[];
+  certificates_available?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AnnouncementCategory =
+  | 'All'
+  | 'Events'
+  | 'Event'
+  | 'Club News'
+  | 'Recruitment'
+  | 'Workshops'
+  | 'Workshop'
+  | 'Hackathon'
+  | 'Opportunity'
+  | 'General'
+  | 'Important';
+
+export interface Announcement {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  summary: string;
+  featured_image?: string;
+  category: AnnouncementCategory;
+  author: string;
+  author_role: string;
+  published_at: string;
+  published_date?: string;
+  pinned?: boolean;
+  featured: boolean;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JoinApplication {
+  id: string;
+  full_name: string;
+  college_email?: string;
+  email?: string;
+  phone: string;
+  department: string;
+  year: string;
+  roll_number: string;
+  technical_interests?: string[];
+  interested_domains?: string[];
+  skills?: string;
+  why_join?: string;
+  reason?: string;
+  github_url?: string;
+  linkedin_url?: string;
+  agreed_updates?: boolean;
+  status: 'New' | 'Reviewed' | 'Accepted' | 'Rejected' | 'Pending' | 'Shortlisted';
+  reviewer_notes?: string;
+  created_at: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  event_id: string;
+  event_title?: string;
+  participation_type?: ParticipationType;
+  team_name?: string;
+  full_name: string;
+  participant_name?: string;
+  email: string;
+  phone?: string;
+  college?: string;
+  department: string;
+  year: string;
+  roll_number: string;
+  team_members?: TeamMemberRegistration[];
+  team_size?: number;
+  status: 'Confirmed' | 'Waitlisted' | 'Cancelled' | 'Attended';
+  ticket_code?: string;
+  qr_token?: string;
+  qr_payload?: string;
+  email_status?: 'pending' | 'sent' | 'failed' | 'disabled';
+  email_sent_at?: string;
+  email_error?: string;
+  registered_at?: string;
+  created_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  position: string;
+  role?: string;
+  category: string;
+  department?: string;
+  year?: string;
+  bio: string;
+  photo_url: string;
+  image_url?: string;
+  linkedin?: string;
+  github?: string;
+  email?: string;
+  social_links?: {
+    linkedin?: string;
+    github?: string;
+    twitter?: string;
+    email?: string;
+    [key: string]: any;
+  };
+  featured: boolean;
+  order: number;
+  order_index?: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  slug?: string;
+  description: string;
+  short_description?: string;
+  category: string;
+  tech_stack?: string[];
+  technologies?: string[];
+  team_members?: string[];
+  github_url?: string;
+  demo_url?: string;
+  image_url: string;
+  featured: boolean;
+  status: string;
+  date?: string;
+}
+
+export interface GalleryImage {
+  id: string;
+  title: string;
+  album: string;
+  event_name?: string;
+  image_url: string;
+  caption?: string;
+  date: string;
+  featured: boolean;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  is_read: boolean;
+  responded?: boolean;
+  is_responded?: boolean;
+  created_at: string;
+}
+
+export interface CommunityImpactStat {
+  id: string;
+  value: string;
+  label: string;
+  icon: string;
+  active: boolean;
+  order: number;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+export interface SiteStats {
+  students_reached?: string | number;
+  students_impacted?: string | number;
+  events_conducted?: string | number;
+  projects_completed?: string | number;
+  workshops_held?: string | number;
+  active_members?: string | number;
+  hackathon_wins?: string | number;
+  awards_won?: string | number;
+  community_impact_stats?: CommunityImpactStat[];
+  [key: string]: any;
+}
+
+export interface SiteSettings {
+  club_name: string;
+  club_sub_name?: string;
+  club_tagline?: string;
+  department_name: string;
+  college_name: string;
+  tagline?: string;
+  supporting_text?: string;
+  official_email?: string;
+  contact_email?: string;
+  phone?: string;
+  contact_phone?: string;
+  campus_address?: string;
+  contact_address?: string;
+  instagram_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  social_links?: {
+    github?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+    discord?: string;
+    [key: string]: any;
+  };
+  announcement_ticker?: string;
+  is_recruitment_open: boolean;
+  join_us_status?: boolean;
+  automated_email_enabled?: boolean;
+  email_sender_name?: string;
+  email_sender_address?: string;
+  certificate_signing_authority?: string;
+  certificate_lead_name?: string;
+  certificate_lead_designation?: string;
+  [key: string]: any;
+}
+
+export type CertificateType =
+  | 'Participation'
+  | 'Merit'
+  | 'Appreciation'
+  | 'Club Membership'
+  | 'Hackathon Winner'
+  | 'Workshop Completion'
+  | 'Winner'
+  | 'Runner-up'
+  | 'Speaker'
+  | 'Coordinator'
+  | string;
+
+export interface Certificate {
+  id: string;
+  certificate_code: string;
+  student_name: string;
+  student_email: string;
+  student_roll_no: string;
+  department: string;
+  college_name: string;
+  event_id?: string;
+  event_title: string;
+  certificate_type: CertificateType;
+  issue_date: string;
+  issued_by: string;
+  designation: string;
+  is_valid: boolean;
+  notes?: string;
+  created_at: string;
+}
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  name?: string;
+  department?: string;
+  subscribed_at: string;
+  status: 'Active' | 'Unsubscribed';
+  source?: string;
+}
+
+export interface NewsletterBroadcast {
+  id: string;
+  subject: string;
+  message: string;
+  target: 'All Subscribers' | 'Active Members' | 'Workshop Attendees';
+  sent_at: string;
+  recipient_count: number;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  registration_id: string;
+  event_id: string;
+  event_title: string;
+  participant_name: string;
+  roll_number: string;
+  email: string;
+  department: string;
+  checked_in_at: string;
+  checkin_method: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  admin_email: string;
+  details: string;
+  timestamp: string;
+  ip_address?: string;
+}
+
+export const INITIAL_SETTINGS: SiteSettings = {
+  club_name: 'INTELLIGENZ',
+  club_sub_name: 'IntelliGenZ Club',
+  department_name: 'Department of CSE (AIML) & AI',
+  college_name: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+  tagline: 'Code • Innovate • IntelliGently',
+  supporting_text: 'Where curiosity meets code, intelligence meets innovation, and students build the future.',
+  official_email: 'intelligenz@drkvsrit.ac.in',
+  phone: '+91 8518 287611',
+  campus_address: 'Opp. Dupadu Railway Station, Lakshmipuram Post, Kurnool, Andhra Pradesh 518218',
+  instagram_url: 'https://instagram.com/intelligenz_drkvsrit',
+  linkedin_url: 'https://linkedin.com/company/intelligenz-drkvsrit',
+  github_url: 'https://github.com/intelligenz-drkvsrit',
+  announcement_ticker: '🚀 Registrations Open for "NeuroHack 2026: 24-Hour AI Hackathon" & Generative AI Workshop!',
+  is_recruitment_open: true,
+  join_us_status: true,
+  automated_email_enabled: true,
+  email_sender_name: 'IntelliGenZ Club',
+  email_sender_address: 'intelligenz@drkvsrit.ac.in',
+  certificate_signing_authority: 'Dr. K. E. Sreenivasa Murthy',
+  certificate_lead_name: 'Dr. K. E. Sreenivasa Murthy',
+  certificate_lead_designation: 'Faculty Coordinator & HOD - CSE (AIML)',
+};
+
+export const INITIAL_COMMUNITY_IMPACT_STATS: CommunityImpactStat[] = [
+  {
+    id: 'stat-students-reached',
+    value: '650+',
+    label: 'STUDENTS REACHED',
+    icon: 'Users',
+    active: true,
+    order: 1,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+  {
+    id: 'stat-events-sprints',
+    value: '28+',
+    label: 'EVENTS & SPRINTS',
+    icon: 'Calendar',
+    active: true,
+    order: 2,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+  {
+    id: 'stat-live-projects',
+    value: '14+',
+    label: 'LIVE AI PROJECTS',
+    icon: 'Lightbulb',
+    active: true,
+    order: 3,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+  {
+    id: 'stat-technical-labs',
+    value: '18+',
+    label: 'TECHNICAL LABS',
+    icon: 'GraduationCap',
+    active: true,
+    order: 4,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+  {
+    id: 'stat-hackathon-wins',
+    value: '8+',
+    label: 'HACKATHON WINS',
+    icon: 'Award',
+    active: true,
+    order: 5,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+  {
+    id: 'stat-core-members',
+    value: '120+',
+    label: 'CORE MEMBERS',
+    icon: 'Flame',
+    active: true,
+    order: 6,
+    updated_at: '2026-09-01T00:00:00Z',
+    updated_by: 'Super Admin',
+  },
+];
+
+export const INITIAL_STATS: SiteStats = {
+  students_reached: '650+',
+  events_conducted: '28+',
+  projects_completed: '14+',
+  workshops_held: '18+',
+  active_members: '120+',
+  hackathon_wins: '8+',
+  community_impact_stats: INITIAL_COMMUNITY_IMPACT_STATS,
+};
+
+export const INITIAL_EVENTS: Event[] = [
+  {
+    id: 'evt-neurohack-2026',
+    title: 'NeuroHack 2026: 24-Hour State-Level AI Hackathon',
+    slug: 'neurohack-2026-ai-hackathon',
+    short_description: 'Build real-world AI, Machine Learning, and Computer Vision solutions in an intense 24-hour hackathon with cash prizes up to ₹50,000.',
+    description: `NeuroHack 2026 is the flagship annual hackathon organized by the IntelliGenZ Club, Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology.
+
+Students from engineering colleges across the state are invited to brainstorm, prototype, and build production-ready applications across 4 tracks:
+1. **Generative AI & LLM Agents**
+2. **Healthcare & Vision AI**
+3. **Smart Campus & Automation**
+4. **Open Innovation in Deep Tech**
+
+Participants will receive mentorship from top industry engineers, free food, energy drinks, cloud compute credits, official participation certificates, and cash awards for winning teams.`,
+    event_image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-09-25',
+    start_time: '09:00 AM',
+    end_time: '09:00 AM (+1 Day)',
+    venue: 'Main Auditorium & Advanced AI Labs, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    category: 'Hackathon',
+    speaker: 'Er. Rajesh Varma',
+    speaker_bio: 'Principal AI Architect at TechCorp Labs & Ex-Google Developer Expert',
+    maximum_participants: 200,
+    current_participants: 142,
+    status: 'Registration Open',
+    featured: true,
+    participation_type: 'TEAM',
+    min_team_size: 2,
+    max_team_size: 4,
+    highlights: [
+      '₹50,000 Total Prize Pool',
+      '24-Hour continuous high-speed internet & power backup',
+      'Direct interview opportunities with sponsoring startups',
+      'Cloud compute credits sponsored for all qualified teams',
+    ],
+    created_at: '2026-08-15T10:00:00Z',
+    updated_at: '2026-08-25T14:30:00Z',
+  },
+  {
+    id: 'evt-genai-masterclass',
+    title: 'Deep Dive: Building Autonomous Agents with Gemini & LangChain',
+    slug: 'genai-autonomous-agents-workshop',
+    short_description: 'Hands-on technical workshop on creating multimodal AI agents, retrieval augmented generation (RAG), and deploying intelligent web apps.',
+    description: `Join us for a rigorous 1-day practical workshop hosted by the IntelliGenZ technical team. 
+
+Learn how to harness cutting-edge foundation models, build robust RAG pipelines with vector databases, and deploy tool-calling autonomous AI agents. All participants will build and deploy a live working project during the session.`,
+    event_image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-09-12',
+    start_time: '10:00 AM',
+    end_time: '04:30 PM',
+    venue: 'Seminar Hall 2, CSE Block, DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    category: 'Workshop',
+    speaker: 'Dr. Priya Sundaram',
+    speaker_bio: 'Senior Research Scientist in NLP and Generative AI systems',
+    maximum_participants: 90,
+    current_participants: 86,
+    status: 'Registration Open',
+    featured: true,
+    participation_type: 'SOLO',
+    min_team_size: 1,
+    max_team_size: 1,
+    highlights: [
+      'Live code walkthrough and Colab notebooks provided',
+      'Hands-on building of RAG with Vector Search',
+      'Official Certificate of Completion from Department of CSE (AIML)',
+    ],
+    created_at: '2026-08-20T08:00:00Z',
+    updated_at: '2026-08-28T09:15:00Z',
+  },
+  {
+    id: 'evt-vision-robotics',
+    title: 'Edge AI & Computer Vision with OpenCV and Embedded Systems',
+    slug: 'edge-ai-computer-vision-bootcamp',
+    short_description: 'Discover how to run real-time object detection and facial recognition models on micro-controllers and edge hardware.',
+    description: `A specialized bootcamp on embedded intelligence, robotic vision, and low-latency computer vision pipelines for real-time edge computing.`,
+    event_image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-10-08',
+    start_time: '01:30 PM',
+    end_time: '05:30 PM',
+    venue: 'Robotics & Embedded Systems Lab, 3rd Floor',
+    category: 'AI Bootcamp',
+    speaker: 'Prof. K. Venkatesh',
+    speaker_bio: 'Lead Researcher in Edge Computing & Embedded Systems',
+    maximum_participants: 60,
+    current_participants: 34,
+    status: 'Upcoming',
+    featured: false,
+    participation_type: 'DUO',
+    min_team_size: 2,
+    max_team_size: 2,
+    highlights: [
+      'Hardware kits supplied for live experimentations',
+      'Deploying YOLO models to Raspberry Pi & Jetson Nano',
+      'Open Q&A on robotics competitions',
+    ],
+    created_at: '2026-08-22T11:00:00Z',
+    updated_at: '2026-08-22T11:00:00Z',
+  },
+  {
+    id: 'evt-code-clash-2026',
+    title: 'CodeClash 2026: Algorithmic Duel & Speed Programming',
+    slug: 'code-clash-algorithmic-duel',
+    short_description: 'Competitive programming tournament featuring data structures, dynamic programming, and algorithm optimization battles.',
+    description: `IntelliGenZ Club's monthly competitive programming arena. Speed, precision, and optimal complexity decide the winners.`,
+    event_image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-08-10',
+    start_time: '02:00 PM',
+    end_time: '05:00 PM',
+    venue: 'Computer Center Lab 4',
+    category: 'Coding Contest',
+    maximum_participants: 120,
+    current_participants: 118,
+    status: 'Completed',
+    featured: false,
+    participation_type: 'SOLO',
+    min_team_size: 1,
+    max_team_size: 1,
+    results: 'Top 3 winners felicitated with shields and certificates by the Head of Department.',
+    winners: [
+      { position: '1st Place', name: 'M. Sumanth (CSE AIML 3rd Year)', team_name: 'BitMasters' },
+      { position: '2nd Place', name: 'G. Keerthana (CSE 2nd Year)', team_name: 'AlgoHacks' },
+      { position: '3rd Place', name: 'K. Sai Teja (AI 3rd Year)', team_name: 'Matrix' },
+    ],
+    certificates_available: true,
+    created_at: '2026-07-28T09:00:00Z',
+    updated_at: '2026-08-11T16:00:00Z',
+  },
+];
+
+export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'ann-recruitment-2026',
+    title: 'Core Committee & Domain Wing Recruitment Drive 2026-27 Announced',
+    slug: 'recruitment-drive-2026-27',
+    summary: 'IntelliGenZ is opening applications for Technical, Design, Event Management, and Media Wings for the upcoming academic year.',
+    content: `The Department of CSE (AIML) & AI at Dr. K. V. Subba Reddy Institute of Technology proudly invites enthusiastic students to apply for the IntelliGenZ Club Core Committee.
+
+We are recruiting across 5 key wings:
+- **Technical Wing:** AI/ML, Full Stack, IoT & Competitive Programming
+- **Design Wing:** UI/UX, Graphic Design & Motion Graphics
+- **Event Operations:** Logistics, Sponsorship & Stage Coordination
+- **Content & Media:** Technical Writing, Photography, Video Editing & Social Media
+- **Public Relations:** College outreach & speaker coordination
+
+All 1st, 2nd, and 3rd-year engineering students with a hunger to learn and innovate are encouraged to submit their applications through the online portal before the deadline.`,
+    category: 'Recruitment',
+    author: 'Faculty Coordinator & President',
+    author_role: 'IntelliGenZ Executive Council',
+    published_at: '2026-08-28T09:00:00Z',
+    featured: true,
+    tags: ['Recruitment', 'CoreTeam', 'JoinUs'],
+    created_at: '2026-08-28T09:00:00Z',
+    updated_at: '2026-08-28T09:00:00Z',
+  },
+  {
+    id: 'ann-smart-india-hackathon',
+    title: 'IntelliGenZ Teams Shortlisted for National AI Challenge Grand Finale',
+    slug: 'national-ai-challenge-shortlist-success',
+    summary: 'Two teams from CSE (AIML) mentored by IntelliGenZ club faculty have reached the Grand Finale among 400+ nationwide institutions.',
+    content: `Hearty congratulations to Team 'NeuroPulse' and Team 'VisionGrid' for being selected for the Grand Finale of the National Smart Innovation Challenge!
+
+Their innovative projects on **AI-Driven Crop Disease Diagnosis via Satellite Imaging** and **Smart Traffic Density AI Optimizer** were lauded by the technical jury. The management and faculty of DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY congratulate the teams.`,
+    category: 'Hackathon',
+    author: 'Head of Department',
+    author_role: 'Dept. of CSE (AIML) & AI',
+    published_at: '2026-08-22T11:30:00Z',
+    featured: true,
+    tags: ['Hackathon', 'National', 'ProudMoment'],
+    created_at: '2026-08-22T11:30:00Z',
+    updated_at: '2026-08-22T11:30:00Z',
+  },
+  {
+    id: 'ann-gpu-cluster-inauguration',
+    title: 'Inauguration of Dedicated High-Compute AI Research Station in Department',
+    slug: 'high-compute-ai-research-station-inauguration',
+    summary: 'A brand-new state-of-the-art GPU workstation cluster has been commissioned for club research and student deep learning projects.',
+    content: `With support from college leadership at Dr. K. V. Subba Reddy Institute of Technology, a dedicated high-performance computing environment with NVIDIA RTX accelerators has been set up in Lab 3. Club members working on large language models and computer vision research can now schedule compute slots through the IntelliGenZ portal.`,
+    category: 'Club News',
+    author: 'Technical Lead',
+    author_role: 'IntelliGenZ Research Cell',
+    published_at: '2026-08-14T14:00:00Z',
+    featured: false,
+    tags: ['Infrastructure', 'DeepLearning', 'AI'],
+    created_at: '2026-08-14T14:00:00Z',
+    updated_at: '2026-08-14T14:00:00Z',
+  },
+];
+
+export const INITIAL_TEAM: TeamMember[] = [
+  {
+    id: 'tm-faculty-coord',
+    name: 'Dr. S. K. Ramesh Babu',
+    position: 'Faculty Coordinator & Professor',
+    category: 'Faculty Coordinator',
+    bio: 'Ph.D. in Computer Science with 16+ years of academic and research experience specializing in Machine Learning, Pattern Recognition, and Neural Architectures.',
+    photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    email: 'ramesh.s@drkvsrit.ac.in',
+    featured: true,
+    order: 1,
+  },
+  {
+    id: 'tm-hod',
+    name: 'Dr. G. Madhusudhan Rao',
+    position: 'Head of Department, CSE (AIML) & AI',
+    category: 'Faculty Coordinator',
+    bio: 'Guiding visionary student initiatives and pioneering AI curriculum development at Dr. K. V. Subba Reddy Institute of Technology.',
+    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    email: 'hod.aiml@drkvsrit.ac.in',
+    featured: true,
+    order: 2,
+  },
+  {
+    id: 'tm-club-lead',
+    name: 'A. Rahul Sharma',
+    position: 'Club President & Technical Lead',
+    category: 'Club Lead',
+    bio: 'Full Stack & AI Engineer passionate about Transformers, LLM orchestration, and building impactful open-source technology for students.',
+    photo_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    github: 'https://github.com',
+    email: 'rahul.s@drkvsrit.ac.in',
+    featured: true,
+    order: 3,
+  },
+  {
+    id: 'tm-vice-lead',
+    name: 'N. Sahithi Reddy',
+    position: 'Vice President & Operations Head',
+    category: 'Vice Lead',
+    bio: 'Machine learning practitioner, hackathon winner, and community organizer dedicated to fostering inclusive tech growth.',
+    photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    github: 'https://github.com',
+    featured: true,
+    order: 4,
+  },
+  {
+    id: 'tm-tech-lead-1',
+    name: 'K. Vishnu Vardhan',
+    position: 'AI/ML Wing Lead',
+    category: 'Technical Team',
+    bio: 'Computer Vision researcher, PyTorch enthusiast, and competitive programmer with top ratings on LeetCode and CodeChef.',
+    photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    github: 'https://github.com',
+    featured: false,
+    order: 5,
+  },
+  {
+    id: 'tm-design-lead',
+    name: 'P. Bhavana',
+    position: 'UI/UX & Creative Director',
+    category: 'Design Team',
+    bio: 'Figma artist and visual designer crafting dark-mode interfaces, interactive design systems, and club identity branding.',
+    photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    featured: false,
+    order: 6,
+  },
+  {
+    id: 'tm-event-lead',
+    name: 'D. Karthik Kumar',
+    position: 'Event Operations Lead',
+    category: 'Event Team',
+    bio: 'Coordinator of workshops, college-wide symposiums, and national-level hackathons with smooth logistical execution.',
+    photo_url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    featured: false,
+    order: 7,
+  },
+  {
+    id: 'tm-media-lead',
+    name: 'V. Sneha',
+    position: 'Media & Communications Lead',
+    category: 'Media Team',
+    bio: 'Digital storyteller, content creator, and social media strategist handling club outreach and newsletter publishing.',
+    photo_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80',
+    linkedin: 'https://linkedin.com',
+    featured: false,
+    order: 8,
+  },
+];
+
+export const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'proj-retina-ai',
+    name: 'RetinaScan AI: Automated Ocular Disease Classifier',
+    slug: 'retinascan-ai-ocular-disease-classifier',
+    category: 'AI',
+    short_description: 'Deep convolutional neural network model detecting diabetic retinopathy and glaucoma from fundus retinal photographs.',
+    description: `A collaborative research project built by IntelliGenZ students in partnership with local healthcare clinics. The model achieves 96.4% sensitivity in early-stage diabetic retinopathy detection.`,
+    tech_stack: ['PyTorch', 'FastAPI', 'TensorFlow.js', 'React', 'Tailwind CSS'],
+    team_members: ['A. Rahul Sharma', 'K. Vishnu Vardhan', 'Dr. S. K. Ramesh'],
+    github_url: 'https://github.com/intelligenz-drkvsrit/retinascan-ai',
+    demo_url: 'https://retinascan-demo.intelligenz.org',
+    image_url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
+    featured: true,
+    status: 'Completed',
+    date: '2026-06',
+  },
+  {
+    id: 'proj-kvsrit-copilot',
+    name: 'KVSRIT Campus Copilot: RAG-Powered AI Student Assistant',
+    slug: 'kvsrit-campus-copilot',
+    category: 'Generative AI',
+    short_description: 'Multilingual conversational AI agent trained on syllabus, college regulations, examination schedules, and departmental notices.',
+    description: `An interactive generative AI assistant built using Gemini models and vector search embeddings, serving 2,000+ college students daily for academic queries.`,
+    tech_stack: ['Gemini 2.5', 'LangChain', 'Next.js', 'PostgreSQL / pgvector'],
+    team_members: ['N. Sahithi Reddy', 'M. Sumanth', 'P. Bhavana'],
+    github_url: 'https://github.com/intelligenz-drkvsrit/campus-copilot',
+    demo_url: 'https://copilot.drkvsrit.ac.in',
+    image_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+    featured: true,
+    status: 'Completed',
+    date: '2026-04',
+  },
+  {
+    id: 'proj-smart-attendance-edge',
+    name: 'EdgeFace: Multi-Camera Real-Time Attendance with Anti-Spoofing',
+    slug: 'edgeface-multi-camera-attendance-system',
+    category: 'Computer Vision',
+    short_description: 'Ultra-low latency facial recognition kiosk running on edge hardware with 3D liveness detection.',
+    description: `Deployed in the department smart seminar halls to automate attendance logging with zero manual friction and real-time dashboard analytics.`,
+    tech_stack: ['OpenCV', 'InsightFace', 'Raspberry Pi 5', 'Node.js', 'WebSockets'],
+    team_members: ['K. Vishnu Vardhan', 'D. Karthik Kumar'],
+    github_url: 'https://github.com/intelligenz-drkvsrit/edgeface-attendance',
+    image_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+    featured: true,
+    status: 'Completed',
+    date: '2026-03',
+  },
+  {
+    id: 'proj-agri-drone-ai',
+    name: 'AgriVision: Autonomous Drone Crop Health Analyzer',
+    slug: 'agrivision-drone-crop-analyzer',
+    category: 'Robotics',
+    short_description: 'Multispectral drone camera integration with lightweight semantic segmentation for agricultural yield estimation.',
+    description: `Student innovation project addressing drought-prone agricultural monitoring in Rayalaseema region with aerial multispectral telemetry.`,
+    tech_stack: ['YOLOv10', 'ROS2', 'Python', 'Flutter'],
+    team_members: ['G. Keerthana', 'A. Rahul Sharma'],
+    github_url: 'https://github.com/intelligenz-drkvsrit/agrivision',
+    image_url: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80',
+    featured: false,
+    status: 'In Progress',
+    date: '2026-07',
+  },
+];
+
+export const INITIAL_GALLERY: GalleryImage[] = [
+  {
+    id: 'gal-1',
+    title: 'Annual AI Bootcamp 2026 Inauguration',
+    album: 'Workshops 2026',
+    event_name: 'AI Bootcamp 2026',
+    image_url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Students diving into deep neural network architectures in Lab 2',
+    date: '2026-08-10',
+    featured: true,
+  },
+  {
+    id: 'gal-2',
+    title: 'Hackathon Ideation & Mentorship Rounds',
+    album: 'Hackathons',
+    event_name: 'NeuroHack 2025',
+    image_url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Teams discussing hardware-software integration with industry judges',
+    date: '2026-06-15',
+    featured: true,
+  },
+  {
+    id: 'gal-3',
+    title: 'Club Foundation & Orientation Ceremony',
+    album: 'Orientations',
+    event_name: 'IntelliGenZ Orientation',
+    image_url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Welcoming the fresh batch of CSE (AIML) & AI engineers to IntelliGenZ',
+    date: '2026-07-02',
+    featured: true,
+  },
+  {
+    id: 'gal-4',
+    title: 'Robotics & Computer Vision Demonstration',
+    album: 'Tech Exhibits',
+    event_name: 'TechExpo 2026',
+    image_url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Autonomous drone tracking demonstration at the central quadrangle',
+    date: '2026-05-22',
+    featured: false,
+  },
+  {
+    id: 'gal-5',
+    title: 'Prize Distribution & Felicitation',
+    album: 'Felicitation',
+    event_name: 'CodeClash 2026',
+    image_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80',
+    caption: 'College leadership handing trophies to hackathon winners',
+    date: '2026-08-11',
+    featured: true,
+  },
+  {
+    id: 'gal-6',
+    title: 'Hands-on Generative AI Coding Jam',
+    album: 'Workshops 2026',
+    event_name: 'GenAI Workshop',
+    image_url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Building multimodal AI agents in the cloud laboratory',
+    date: '2026-08-18',
+    featured: false,
+  },
+];
+
+export const INITIAL_CERTIFICATES: Certificate[] = [
+  {
+    id: 'cert-iz-2026-001',
+    certificate_code: 'IZ-2026-NH-8942',
+    student_name: 'Sai Mahendra Reddy',
+    student_email: 'mahendra.cse@drkvsrit.ac.in',
+    student_roll_no: '232G1A3101',
+    department: 'CSE (AIML)',
+    college_name: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    event_id: 'evt-neurohack-2026',
+    event_title: 'NeuroHack 2026: 24-Hour State-Level AI Hackathon',
+    certificate_type: 'Merit',
+    issue_date: '2026-08-28',
+    issued_by: 'Dr. S. K. Basha & Club Leads',
+    designation: 'HOD, CSE (AIML) & Faculty Coordinator',
+    is_valid: true,
+    notes: 'Awarded 1st Place for autonomous multimodal agent project in Hackathon Track 1',
+    created_at: '2026-08-28T10:00:00Z',
+  },
+  {
+    id: 'cert-iz-2026-002',
+    certificate_code: 'IZ-2026-GA-4109',
+    student_name: 'Ananya Sharma',
+    student_email: 'ananya.ai@drkvsrit.ac.in',
+    student_roll_no: '232G1A3204',
+    department: 'Artificial Intelligence & Machine Learning',
+    college_name: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    event_id: 'evt-genai-masterclass',
+    event_title: 'Deep Dive: Building Autonomous Agents with Gemini & LangChain',
+    certificate_type: 'Workshop Completion',
+    issue_date: '2026-08-25',
+    issued_by: 'Dr. Priya Sundaram & IntelliGenZ Leads',
+    designation: 'Lead Instructor & Club Technical Board',
+    is_valid: true,
+    notes: 'Successfully deployed hands-on RAG AI Agent workshop pipeline',
+    created_at: '2026-08-25T16:00:00Z',
+  },
+  {
+    id: 'cert-iz-2026-003',
+    certificate_code: 'IZ-2026-MB-1088',
+    student_name: 'K. Tharun Kumar',
+    student_email: 'tharun.k@drkvsrit.ac.in',
+    student_roll_no: '242G1A3125',
+    department: 'CSE (AIML)',
+    college_name: 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
+    event_id: undefined,
+    event_title: 'IntelliGenZ Technical Core Membership & AI Contributor',
+    certificate_type: 'Club Membership',
+    issue_date: '2026-08-15',
+    issued_by: 'Department of CSE (AIML) & AI',
+    designation: 'Faculty Coordinator & President',
+    is_valid: true,
+    notes: 'Official Core Contributor in Machine Learning and Web Systems Team',
+    created_at: '2026-08-15T09:00:00Z',
+  },
+];
+
+export const INITIAL_SUBSCRIBERS: NewsletterSubscriber[] = [
+  {
+    id: 'sub-1',
+    email: 'ai.student1@drkvsrit.ac.in',
+    name: 'Ravi Teja',
+    department: 'CSE (AIML)',
+    subscribed_at: '2026-08-20T10:15:00Z',
+    status: 'Active',
+    source: 'Website Footer',
+  },
+  {
+    id: 'sub-2',
+    email: 'priya.k@gmail.com',
+    name: 'Priya K.',
+    department: 'AI & Data Science',
+    subscribed_at: '2026-08-22T14:40:00Z',
+    status: 'Active',
+    source: 'Hackathon Pop-up',
+  },
+  {
+    id: 'sub-3',
+    email: 'mahigamingzone2@gmail.com',
+    name: 'Mahendra Admin',
+    department: 'CSE (AIML)',
+    subscribed_at: '2026-08-25T08:00:00Z',
+    status: 'Active',
+    source: 'Admin Direct',
+  },
+];
 
 export interface AdminUserRecord {
   id: string;

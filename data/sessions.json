@@ -1,13 +1,13 @@
 [
   {
-    "token": "session_usr-admin-primary:1789987177305:1790015977305_edc85f4ba865bc0bb3cdc21b2427dc30cabb35f1150dc78fafc19003d5f1a44a",
+    "token": "session_usr-admin-primary:1789987744999:1790016544999_57b719ce534d29d837f2fe6a6212af6cf8a809182982c67d14294684c7bcd646",
     "userId": "usr-admin-primary",
     "username": "superadmin",
     "email": "mahibittu2006@gmail.com",
     "role": "SUPER_ADMIN",
-    "createdAt": 1789987177305,
-    "lastActivityAt": 1789987177305,
-    "expiresAt": 1790015977305,
+    "createdAt": 1789987744999,
+    "lastActivityAt": 1789987744999,
+    "expiresAt": 1790016544999,
     "mustChangePassword": false
   }
 ]
