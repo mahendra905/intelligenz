@@ -2355,15 +2355,27 @@ app.use((req, res, next) => {
   });
 
   // Event Registration (Public)
-  app.post('/api/events/:id/register', rateLimiter(45, 60000), async (req, res) => {
-    const eventId = req.params.id;
+  app.post(['/api/events/:id/register', '/api/events/:id/registrations', '/api/registrations'], rateLimiter(45, 60000), async (req, res) => {
+    const eventId = req.params.id || req.body.event_id || req.body.eventId;
+    if (!eventId) {
+      res.status(400).json({ error: 'Event ID is required for registration.' });
+      return;
+    }
+
     const event = db.events.find((e) => e.id === eventId || e.slug === eventId);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
     }
 
-    if (event.status !== 'Registration Open') {
+    const isRegOpen =
+      event.status === 'Registration Open' ||
+      (event as any).enable_registrations === true ||
+      (event as any).is_registration_open === true ||
+      event.status === 'Upcoming' ||
+      !event.status;
+
+    if (!isRegOpen) {
       res.status(400).json({ error: 'Registrations are currently not open for this event.' });
       return;
     }
@@ -2865,8 +2877,8 @@ app.use((req, res, next) => {
   // ==========================================
   // CERTIFICATES VERIFICATION & LOOKUP (Public)
   // ==========================================
-  app.get('/api/certificates', (req, res) => {
-    const query = (req.query.q as string || '').toLowerCase().trim();
+  app.get(['/api/certificates', '/api/certificates/search'], (req, res) => {
+    const query = (req.query.q as string || req.query.search as string || req.query.query as string || '').toLowerCase().trim();
     
     // Sanitize output for public consumption to prevent personal information scraping
     const sanitizePublicCert = (c: Certificate) => ({
@@ -2894,10 +2906,11 @@ app.use((req, res, next) => {
 
     const matches = db.certificates.filter(
       (c) =>
-        c.certificate_code.toLowerCase().includes(query) ||
-        c.student_name.toLowerCase().includes(query) ||
-        c.student_roll_no.toLowerCase().includes(query) ||
-        c.event_title.toLowerCase().includes(query)
+        (c.certificate_code && c.certificate_code.toLowerCase().includes(query)) ||
+        (c.id && c.id.toLowerCase().includes(query)) ||
+        (c.student_name && c.student_name.toLowerCase().includes(query)) ||
+        (c.student_roll_no && c.student_roll_no.toLowerCase().includes(query)) ||
+        (c.event_title && c.event_title.toLowerCase().includes(query))
     );
 
     res.json(matches.map(sanitizePublicCert));
@@ -2937,11 +2950,12 @@ app.use((req, res, next) => {
       notes: cert.notes,
     });
 
-    // 1. Search by exact certificate_code (case-insensitive & trimmed)
+    // 1. Search by exact certificate_code or id (case-insensitive & trimmed)
     const codeMatches = db.certificates.filter((c) => {
       const cCode = (c.certificate_code || '').trim().toUpperCase();
       const cCodeNorm = (c.certificate_code || '').replace(/\s+/g, '').toUpperCase();
-      return cCode === queryUpper || cCodeNorm === queryNormalized;
+      const cId = (c.id || '').trim().toUpperCase();
+      return cCode === queryUpper || cCodeNorm === queryNormalized || cId === queryUpper;
     });
 
     if (codeMatches.length > 0) {
@@ -3207,7 +3221,7 @@ app.use((req, res, next) => {
     });
   });
 
-  app.get('/api/auth/verify', (req, res) => {
+  app.get(['/api/auth/verify', '/api/auth/me', '/api/auth/session'], (req, res) => {
     const token = extractToken(req);
     if (!token) {
       res.status(401).json({ valid: false, error: 'No authorization token provided.' });
@@ -3227,7 +3241,7 @@ app.use((req, res, next) => {
       activeSessions.delete(token);
       saveSessions(activeSessions);
       res.clearCookie('intelligenz_session', { path: '/' });
-      res.status(401).json({ valid: false, error: 'Session reached maximum lifetime limit (8 hours).', code: 'SESSION_MAX_LIFETIME' });
+      res.status(401).json({ valid: false, error: 'Session reached maximum lifetime limit (24 hours).', code: 'SESSION_MAX_LIFETIME' });
       return;
     }
 
@@ -3253,6 +3267,16 @@ app.use((req, res, next) => {
     session.lastActivityAt = now;
     throttledSaveSessions();
 
+    const userInfo = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      mustChangePassword: !!user.must_change_password,
+    };
+
     res.json({
       valid: true,
       sessionStart: sessionCreatedAt,
@@ -3262,15 +3286,8 @@ app.use((req, res, next) => {
       warningDuration: ADMIN_SESSION_WARNING,
       remainingIdleMs: Math.max(0, ADMIN_IDLE_TIMEOUT - (now - session.lastActivityAt)),
       remainingLifetimeMs: Math.max(0, (sessionCreatedAt + ADMIN_MAX_SESSION_LIFETIME) - now),
-      user: {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        mustChangePassword: !!user.must_change_password,
-      },
+      user: userInfo,
+      admin: userInfo,
     });
   });
 
@@ -4083,11 +4100,11 @@ app.use((req, res, next) => {
   });
 
   // Admin Join Applications Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.get('/join-applications', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.get(['/join-applications', '/applications'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
     res.json(Array.isArray(db.join_applications) ? db.join_applications : []);
   });
 
-  adminRouter.patch('/join-applications/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.patch(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
     const app = (db.join_applications || []).find((a) => a.id === req.params.id);
     if (!app) {
       res.status(404).json({ error: 'Application not found' });
@@ -4099,7 +4116,7 @@ app.use((req, res, next) => {
     res.json(app);
   });
 
-  adminRouter.delete('/join-applications/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.delete(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
     db.join_applications = (db.join_applications || []).filter((a) => a.id !== req.params.id);
     saveDatabase(db);
     res.json({ success: true });
@@ -4258,7 +4275,8 @@ app.use((req, res, next) => {
 
   // Admin Projects Management (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.post('/projects', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const slug = req.body.slug || req.body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const projTitle = (req.body.title || req.body.name || 'project').toString();
+    const slug = req.body.slug || projTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const newProj: Project = {
       ...req.body,
       id: `proj-${Date.now()}`,
@@ -4721,19 +4739,19 @@ app.use((req, res, next) => {
 
   adminRouter.post('/certificates', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
     const body = req.body;
-    const certCode = body.certificate_code || `IZ-2026-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const certCode = body.certificate_code || body.certificate_id || body.code || `IZ-2026-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newCert: Certificate = {
-      id: `cert-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: body.id || `cert-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       certificate_code: certCode,
-      student_name: (body.student_name || '').trim(),
-      student_email: (body.student_email || '').trim().toLowerCase(),
-      student_roll_no: (body.student_roll_no || '').trim().toUpperCase(),
+      student_name: (body.student_name || body.recipient_name || body.name || '').trim(),
+      student_email: (body.student_email || body.email || '').trim().toLowerCase(),
+      student_roll_no: (body.student_roll_no || body.roll_number || body.roll_no || '').trim().toUpperCase(),
       department: (body.department || 'CSE (AIML)').trim(),
       college_name: body.college_name || 'DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY',
       event_id: body.event_id,
-      event_title: (body.event_title || '').trim(),
-      certificate_type: body.certificate_type || 'Participation',
+      event_title: (body.event_title || body.event_name || body.title || '').trim(),
+      certificate_type: body.certificate_type || body.type || 'Participation',
       issue_date: body.issue_date || new Date().toISOString().slice(0, 10),
       issued_by: body.issued_by || 'Department of CSE (AIML) & AI',
       designation: body.designation || 'Faculty Coordinator & President',

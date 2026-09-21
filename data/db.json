@@ -4,7 +4,7 @@
     "club_sub_name": "IntelliGenZ Club",
     "department_name": "Department of CSE (AIML) & AI",
     "college_name": "DR. K. V. SUBBA REDDY INSTITUTE OF TECHNOLOGY",
-    "tagline": "Code • Innovate • IntelliGently",
+    "tagline": "Empowering Artificial Intelligence & Machine Learning Enthusiasts",
     "supporting_text": "Where curiosity meets code, intelligence meets innovation, and students build the future.",
     "official_email": "intelligenz@drkvsrit.ac.in",
     "phone": "+91 8518 287611",
@@ -13,8 +13,8 @@
     "linkedin_url": "https://linkedin.com/company/intelligenz-drkvsrit",
     "github_url": "https://github.com/intelligenz-drkvsrit",
     "announcement_ticker": "🚀 Registrations Open for \"NeuroHack 2026: 24-Hour AI Hackathon\" & Generative AI Workshop!",
-    "is_recruitment_open": false,
-    "join_us_status": false,
+    "is_recruitment_open": true,
+    "join_us_status": true,
     "club_tagline": "",
     "contact_email": "",
     "contact_phone": "",
@@ -550,7 +550,34 @@
       "featured": false
     }
   ],
-  "join_applications": [],
+  "join_applications": [
+    {
+      "id": "app-1789991017867-7yv2j1",
+      "full_name": "Aspiring Member 1789991017867",
+      "email": "aspiring_1789991017867@example.com",
+      "college_email": "aspiring_1789991017867@example.com",
+      "phone": "9876543211",
+      "department": "CSE (AI&ML)",
+      "year": "II Year",
+      "roll_number": "24K91A3766",
+      "interested_domains": [
+        "Machine Learning",
+        "NLP"
+      ],
+      "technical_interests": [
+        "Machine Learning",
+        "NLP"
+      ],
+      "skills": "",
+      "reason": "I want to build real world AI systems with INTELLIGENZ",
+      "why_join": "I want to build real world AI systems with INTELLIGENZ",
+      "github_url": "https://github.com/aspiring",
+      "linkedin_url": "https://linkedin.com/in/aspiring",
+      "agreed_updates": false,
+      "status": "Pending",
+      "created_at": "2026-09-21T11:43:37.868Z"
+    }
+  ],
   "registrations": [
     {
       "id": "reg-genai-104215",
@@ -589,7 +616,28 @@
       "qr_payload": "ATTENDANCE:qrat_neuro104230_104230"
     }
   ],
-  "messages": [],
+  "messages": [
+    {
+      "id": "msg-1789991017863-ehwcku",
+      "name": "Inquiry Person",
+      "email": "inquiry_1789991017863@example.com",
+      "subject": "Partnership Inquiry",
+      "message": "We would love to partner with INTELLIGENZ.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T11:43:37.863Z"
+    },
+    {
+      "id": "msg-1789990807295-7v1zbh",
+      "name": "Inquiry Person",
+      "email": "inquiry@example.com",
+      "subject": "Partnership Inquiry",
+      "message": "We would love to partner with INTELLIGENZ.",
+      "is_read": false,
+      "responded": false,
+      "created_at": "2026-09-21T11:40:07.295Z"
+    }
+  ],
   "admin_users": [
     {
       "id": "usr-admin-primary",
@@ -602,8 +650,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-01T06:05:39.268Z",
-      "updated_at": "2026-09-21T10:49:04.999Z",
-      "last_login_at": "2026-09-21T10:49:04.998Z",
+      "updated_at": "2026-09-21T11:43:34.529Z",
+      "last_login_at": "2026-09-21T11:43:34.529Z",
       "created_by": "System Bootstrap"
     },
     {
@@ -817,6 +865,136 @@
     }
   ],
   "audit_logs": [
+    {
+      "id": "log-1789991017891-dfei4",
+      "action": "Admin Logout",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator session signed out for mahibittu2006@gmail.com",
+      "timestamp": "2026-09-21T11:43:37.891Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789991017885-z4a95",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1789991017849",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member Jane Doe (Lead AI Engineer)",
+      "timestamp": "2026-09-21T11:43:37.885Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789991017850-81oxt",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1789991017849",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member Jane Doe (Lead AI Engineer)",
+      "timestamp": "2026-09-21T11:43:37.850Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789991014543-myf5v",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1789991014539",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"Updated Audit Test Event\" (Status: Upcoming, Type: SOLO)",
+      "timestamp": "2026-09-21T11:43:34.543Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789991014539-eybek",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1789991014539",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"Audit Test Event 1789991014536\" (SOLO participation)",
+      "timestamp": "2026-09-21T11:43:34.539Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789991014531-mrcx5",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T11:43:34.531Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807325-rw07p",
+      "action": "Admin Logout",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator session signed out for mahibittu2006@gmail.com",
+      "timestamp": "2026-09-21T11:40:07.325Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807307-cb82f",
+      "action": "Team Member Deleted",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1789990807257",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin removed team member Jane Doe (Lead AI Engineer)",
+      "timestamp": "2026-09-21T11:40:07.307Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807258-1qme0",
+      "action": "Team Member Added",
+      "entity_type": "TeamMember",
+      "entity_id": "tm-1789990807257",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin added team member Jane Doe (Lead AI Engineer)",
+      "timestamp": "2026-09-21T11:40:07.258Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807249-4vdym",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1789990807246",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"Updated Audit Test Event\" (Status: Upcoming, Type: SOLO)",
+      "timestamp": "2026-09-21T11:40:07.249Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807247-g6slq",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1789990807246",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"Audit Test Event 1789990807244\" (SOLO participation)",
+      "timestamp": "2026-09-21T11:40:07.247Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990807240-2z2hl",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Primary Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-21T11:40:07.240Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1789990783338-8vtle",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "admin@intelligenz.club",
+      "admin_email": "admin@intelligenz.club",
+      "details": "Failed login attempt for unknown account 'admin@intelligenz.club'",
+      "timestamp": "2026-09-21T11:39:43.338Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1789989872395-cziqt",
       "action": "Admin Login Failed",
