@@ -1291,8 +1291,20 @@ function saveDatabase(database: DatabaseSchema) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2), 'utf-8');
+    if (SEED_DB_FILE !== DB_FILE) {
+      try {
+        const seedDir = path.dirname(SEED_DB_FILE);
+        if (!fs.existsSync(seedDir)) {
+          fs.mkdirSync(seedDir, { recursive: true });
+        }
+        fs.writeFileSync(SEED_DB_FILE, JSON.stringify(database, null, 2), 'utf-8');
+      } catch {
+        // Read-only filesystem in serverless environments is normal for SEED_DB_FILE
+      }
+    }
   } catch (err: any) {
-    console.warn('[Database Notice] Warning writing to database file (in-memory state maintained):', err?.message);
+    console.error('[Database Error] Failed to write database file:', err?.message);
+    throw new Error(`Database persistence failure: ${err?.message || 'Could not write to disk'}`);
   }
 }
 
@@ -4034,10 +4046,37 @@ app.use((req, res, next) => {
     res.json({ success: true, message: 'Winner position removed.', event });
   });
 
-  adminRouter.delete('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    db.events = db.events.filter((e) => e.id !== req.params.id);
+  adminRouter.delete('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    const target = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = db.events.length;
+    db.events = db.events.filter((e) => e.id !== target.id && e.slug !== target.id);
+    if (db.events.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
+      return;
+    }
+    
+    // Also clean up registrations and checkins associated with this event
+    const relatedRegIds = new Set(db.registrations.filter((r) => r.event_id === target.id).map((r) => r.id));
+    db.registrations = db.registrations.filter((r) => r.event_id !== target.id);
+    db.checkins = db.checkins.filter((c) => c.event_id !== target.id && !relatedRegIds.has(c.registration_id));
+
     saveDatabase(db);
-    res.json({ success: true, message: 'Event deleted' });
+
+    logAdminAction(
+      'Event Deleted',
+      'Event',
+      target.id,
+      `Admin deleted event "${target.title}"`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: `Event "${target.title}" successfully deleted.` });
   });
 
   adminRouter.post('/events/:id/duplicate', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
@@ -4079,7 +4118,7 @@ app.use((req, res, next) => {
   });
 
   adminRouter.put('/announcements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.announcements.findIndex((a) => a.id === req.params.id);
+    const index = db.announcements.findIndex((a) => a.id === req.params.id || a.slug === req.params.id);
     if (index === -1) {
       res.status(404).json({ error: 'Announcement not found' });
       return;
@@ -4093,10 +4132,31 @@ app.use((req, res, next) => {
     res.json(db.announcements[index]);
   });
 
-  adminRouter.delete('/announcements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    db.announcements = db.announcements.filter((a) => a.id !== req.params.id);
+  adminRouter.delete('/announcements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    const target = db.announcements.find((a) => a.id === targetId || a.slug === targetId);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = db.announcements.length;
+    db.announcements = db.announcements.filter((a) => a.id !== target.id && a.slug !== target.id);
+    if (db.announcements.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true, message: 'Announcement deleted' });
+
+    logAdminAction(
+      'Announcement Deleted',
+      'Announcement',
+      target.id,
+      `Admin deleted announcement "${target.title}"`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: `Announcement "${target.title}" deleted successfully.` });
   });
 
   // Admin Join Applications Management (SUPER_ADMIN, ADMIN, EDITOR)
@@ -4111,15 +4171,36 @@ app.use((req, res, next) => {
       return;
     }
     if (req.body.status) app.status = req.body.status;
-    if (req.body.reviewer_notes) app.reviewer_notes = req.body.reviewer_notes;
+    if (req.body.reviewer_notes !== undefined) app.reviewer_notes = req.body.reviewer_notes;
     saveDatabase(db);
     res.json(app);
   });
 
-  adminRouter.delete(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.join_applications = (db.join_applications || []).filter((a) => a.id !== req.params.id);
+  adminRouter.delete(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    const target = (db.join_applications || []).find((a) => a.id === targetId);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = (db.join_applications || []).length;
+    db.join_applications = (db.join_applications || []).filter((a) => a.id !== target.id);
+    if (db.join_applications.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Application Deleted',
+      'JoinApplication',
+      target.id,
+      `Admin deleted recruitment application for ${target.full_name}`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Application deleted successfully.' });
   });
 
   // Admin Registrations Management (SUPER_ADMIN, ADMIN, EDITOR)
@@ -4133,7 +4214,7 @@ app.use((req, res, next) => {
   });
 
   adminRouter.patch('/registrations/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const reg = (db.registrations || []).find((r) => r.id === req.params.id);
+    const reg = (db.registrations || []).find((r) => r.id === req.params.id || r.ticket_code === req.params.id);
     if (!reg) {
       res.status(404).json({ error: 'Registration not found' });
       return;
@@ -4143,10 +4224,40 @@ app.use((req, res, next) => {
     res.json(reg);
   });
 
-  adminRouter.delete('/registrations/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.registrations = (db.registrations || []).filter((r) => r.id !== req.params.id);
+  adminRouter.delete('/registrations/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    const target = (db.registrations || []).find((r) => r.id === targetId || r.ticket_code === targetId);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Registration not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = (db.registrations || []).length;
+    db.registrations = (db.registrations || []).filter((r) => r.id !== target.id && r.ticket_code !== target.ticket_code);
+    if (db.registrations.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Registration not found in database or already deleted.' });
+      return;
+    }
+
+    // Decrement participant count on event if applicable
+    const event = db.events.find((e) => e.id === target.event_id);
+    if (event && (event.current_participants || 0) > 0) {
+      event.current_participants = Math.max(0, (event.current_participants || 1) - 1);
+    }
+    // Clean up any checkins for this registration
+    db.checkins = (db.checkins || []).filter((c) => c.registration_id !== target.id);
+
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Registration Deleted',
+      'EventRegistration',
+      target.id,
+      `Admin deleted registration for ${target.full_name} (${target.ticket_code})`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Registration record deleted successfully.' });
   });
 
   // Admin Team Management (SUPER_ADMIN, ADMIN, EDITOR)
@@ -4252,25 +4363,30 @@ app.use((req, res, next) => {
     res.json(db.team[index]);
   });
 
-  adminRouter.delete('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.delete('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
     const target = db.team.find((t) => t.id === req.params.id);
     if (!target) {
-      res.status(404).json({ error: 'Team member not found' });
+      res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
       return;
     }
-    db.team = db.team.filter((t) => t.id !== req.params.id);
+    const prevCount = db.team.length;
+    db.team = db.team.filter((t) => t.id !== target.id);
+    if (db.team.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
 
     logAdminAction(
       'Team Member Deleted',
       'TeamMember',
-      req.params.id,
+      target.id,
       `Admin removed team member ${target.name} (${target.position || target.role})`,
       (req as AuthenticatedRequest).adminUser?.email,
       req
     );
 
-    res.json({ success: true, message: 'Team member deleted' });
+    res.json({ success: true, message: `Team member ${target.name} removed from roster.` });
   });
 
   // Admin Projects Management (SUPER_ADMIN, ADMIN, EDITOR)
@@ -4289,7 +4405,7 @@ app.use((req, res, next) => {
   });
 
   adminRouter.put('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.projects.findIndex((p) => p.id === req.params.id);
+    const index = db.projects.findIndex((p) => p.id === req.params.id || p.slug === req.params.id);
     if (index === -1) {
       res.status(404).json({ error: 'Project not found' });
       return;
@@ -4299,10 +4415,32 @@ app.use((req, res, next) => {
     res.json(db.projects[index]);
   });
 
-  adminRouter.delete('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    db.projects = db.projects.filter((p) => p.id !== req.params.id);
+  adminRouter.delete('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    const target = db.projects.find((p) => p.id === targetId || p.slug === targetId);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = db.projects.length;
+    db.projects = db.projects.filter((p) => p.id !== target.id && p.slug !== target.id);
+    if (db.projects.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true });
+
+    const projName = (target as any).title || target.name || 'Project';
+    logAdminAction(
+      'Project Deleted',
+      'Project',
+      target.id,
+      `Admin deleted project "${projName}"`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: `Project "${projName}" deleted successfully.` });
   });
 
   // Admin Gallery Management (SUPER_ADMIN, ADMIN, EDITOR)
@@ -4327,10 +4465,30 @@ app.use((req, res, next) => {
     res.json(db.gallery[index]);
   });
 
-  adminRouter.delete('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    db.gallery = db.gallery.filter((g) => g.id !== req.params.id);
+  adminRouter.delete('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
+    const target = db.gallery.find((g) => g.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = db.gallery.length;
+    db.gallery = db.gallery.filter((g) => g.id !== target.id);
+    if (db.gallery.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Gallery Item Deleted',
+      'GalleryImage',
+      target.id,
+      `Admin deleted gallery photo "${target.title}"`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Gallery photo removed successfully.' });
   });
 
   // Admin Messages Management (SUPER_ADMIN, ADMIN)
@@ -4350,10 +4508,30 @@ app.use((req, res, next) => {
     res.json(msg);
   });
 
-  adminRouter.delete('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.messages = db.messages.filter((m) => m.id !== req.params.id);
+  adminRouter.delete('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+    const target = db.messages.find((m) => m.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
+      return;
+    }
+    const prevCount = db.messages.length;
+    db.messages = db.messages.filter((m) => m.id !== target.id);
+    if (db.messages.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Message Deleted',
+      'ContactMessage',
+      target.id,
+      `Admin deleted message from ${target.name} (${target.email})`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Message deleted successfully.' });
   });
 
   // Admin Stats & Settings Update
@@ -4817,10 +4995,30 @@ app.use((req, res, next) => {
     res.json(db.certificates[index]);
   });
 
-  adminRouter.delete('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.certificates = db.certificates.filter((c) => c.id !== req.params.id);
+  adminRouter.delete('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+    const target = db.certificates.find((c) => c.id === req.params.id || c.certificate_code === req.params.id);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
+      return;
+    }
+    const prevCount = db.certificates.length;
+    db.certificates = db.certificates.filter((c) => c.id !== target.id && c.certificate_code !== target.certificate_code);
+    if (db.certificates.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true, message: 'Certificate revoked and deleted' });
+
+    logAdminAction(
+      'Certificate Revoked & Deleted',
+      'Certificate',
+      target.id,
+      `Admin revoked certificate ${target.certificate_code} issued to ${target.student_name}`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: `Certificate ${target.certificate_code} revoked and deleted.` });
   });
 
   // ==========================================
@@ -5370,22 +5568,39 @@ app.use((req, res, next) => {
   });
 
   // REMOVE CHECK-IN
-  adminRouter.delete('/checkins/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.delete('/checkins/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
     const target = db.checkins.find((c) => c.id === req.params.id);
-    db.checkins = db.checkins.filter((c) => c.id !== req.params.id);
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Check-in record not found or already removed.' });
+      return;
+    }
+    const prevCount = db.checkins.length;
+    db.checkins = db.checkins.filter((c) => c.id !== target.id);
+    if (db.checkins.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Check-in record not found or already removed.' });
+      return;
+    }
     
     // If the registration had status Attended, revert to Confirmed if no other checkin remains for this reg
-    if (target) {
-      const otherCheckin = db.checkins.find((c) => c.registration_id === target.registration_id);
-      if (!otherCheckin) {
-        const reg = db.registrations.find((r) => r.id === target.registration_id);
-        if (reg && reg.status === 'Attended') {
-          reg.status = 'Confirmed';
-        }
+    const otherCheckin = db.checkins.find((c) => c.registration_id === target.registration_id);
+    if (!otherCheckin) {
+      const reg = db.registrations.find((r) => r.id === target.registration_id);
+      if (reg && reg.status === 'Attended') {
+        reg.status = 'Confirmed';
       }
     }
 
     saveDatabase(db);
+
+    logAdminAction(
+      'Check-in Removed',
+      'AttendanceCheckin',
+      target.id,
+      `Admin removed check-in for registration ${target.registration_id}`,
+      req.adminUser?.email,
+      req
+    );
+
     res.json({ success: true, message: 'Check-in record removed' });
   });
 
@@ -5396,10 +5611,30 @@ app.use((req, res, next) => {
     res.json(db.newsletter_subscribers);
   });
 
-  adminRouter.delete('/newsletter/subscribers/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.newsletter_subscribers = db.newsletter_subscribers.filter((s) => s.id !== req.params.id);
+  adminRouter.delete('/newsletter/subscribers/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+    const target = db.newsletter_subscribers.find((s) => s.id === req.params.id || s.email.toLowerCase() === req.params.id.toLowerCase());
+    if (!target) {
+      res.status(404).json({ success: false, error: 'Subscriber not found in database or already unsubscribed.' });
+      return;
+    }
+    const prevCount = db.newsletter_subscribers.length;
+    db.newsletter_subscribers = db.newsletter_subscribers.filter((s) => s.id !== target.id && s.email.toLowerCase() !== target.email.toLowerCase());
+    if (db.newsletter_subscribers.length === prevCount) {
+      res.status(404).json({ success: false, error: 'Subscriber not found in database or already unsubscribed.' });
+      return;
+    }
     saveDatabase(db);
-    res.json({ success: true });
+
+    logAdminAction(
+      'Newsletter Subscriber Removed',
+      'NewsletterSubscriber',
+      target.id,
+      `Admin removed subscriber ${target.email}`,
+      req.adminUser?.email,
+      req
+    );
+
+    res.json({ success: true, message: 'Newsletter subscriber removed.' });
   });
 
   adminRouter.get('/newsletter/broadcasts', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
