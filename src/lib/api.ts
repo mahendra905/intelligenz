@@ -162,21 +162,18 @@ export const api = {
   // Public API
   getSettings: async (): Promise<SiteSettings> => {
     const res = await fetch('/api/settings');
-    if (!res.ok) throw new Error('Failed to load settings');
-    return res.json();
+    return safeJson<SiteSettings>(res, 'Failed to load settings');
   },
 
   // Public Stats
   getStats: async (): Promise<SiteStats> => {
     const res = await fetch('/api/stats');
-    if (!res.ok) throw new Error('Failed to load stats');
-    return res.json();
+    return safeJson<SiteStats>(res, 'Failed to load stats');
   },
 
   getCommunityImpactStats: async (): Promise<CommunityImpactStat[]> => {
     const res = await fetch('/api/public/community-impact');
-    if (!res.ok) throw new Error('Failed to load community impact statistics');
-    return res.json();
+    return safeJson<CommunityImpactStat[]>(res, 'Failed to load community impact statistics');
   },
 
   getEvents: async (params?: { category?: string; status?: string; featured?: boolean }): Promise<Event[]> => {
@@ -185,14 +182,12 @@ export const api = {
     if (params?.status) query.append('status', params.status);
     if (params?.featured) query.append('featured', 'true');
     const res = await fetch(`/api/events?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to load events');
-    return res.json();
+    return safeJson<Event[]>(res, 'Failed to load events');
   },
 
   getEventBySlug: async (slug: string): Promise<Event> => {
     const res = await fetch(`/api/events/${encodeURIComponent(slug)}`);
-    if (!res.ok) throw new Error('Event not found');
-    return res.json();
+    return safeJson<Event>(res, 'Event not found');
   },
 
   registerForEvent: async (eventId: string, data: {
@@ -220,21 +215,17 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Registration failed');
-    return result;
+    return safeJson(res, 'Registration failed');
   },
 
   getEventRegistrations: async (eventId: string): Promise<EventRegistration[]> => {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/registrations`);
-    if (!res.ok) throw new Error('Failed to load event registrations');
-    return res.json();
+    return safeJson<EventRegistration[]>(res, 'Failed to load event registrations');
   },
 
   getEventWinners: async (eventId: string): Promise<{ event_id: string; title: string; status: string; results?: string; winners: EventWinner[] }> => {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/winners`);
-    if (!res.ok) throw new Error('Failed to load event winners');
-    return res.json();
+    return safeJson(res, 'Failed to load event winners');
   },
 
   getAnnouncements: async (params?: { category?: string; featured?: boolean }): Promise<Announcement[]> => {
@@ -242,34 +233,29 @@ export const api = {
     if (params?.category) query.append('category', params.category);
     if (params?.featured) query.append('featured', 'true');
     const res = await fetch(`/api/announcements?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to load announcements');
-    return res.json();
+    return safeJson<Announcement[]>(res, 'Failed to load announcements');
   },
 
   getAnnouncementBySlug: async (slug: string): Promise<Announcement> => {
     const res = await fetch(`/api/announcements/${encodeURIComponent(slug)}`);
-    if (!res.ok) throw new Error('Announcement not found');
-    return res.json();
+    return safeJson<Announcement>(res, 'Announcement not found');
   },
 
   getTeam: async (): Promise<TeamMember[]> => {
     const res = await fetch('/api/team');
-    if (!res.ok) throw new Error('Failed to load team members');
-    return res.json();
+    return safeJson<TeamMember[]>(res, 'Failed to load team members');
   },
 
   getProjects: async (category?: string): Promise<Project[]> => {
     const url = category && category !== 'All' ? `/api/projects?category=${encodeURIComponent(category)}` : '/api/projects';
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load projects');
-    return res.json();
+    return safeJson<Project[]>(res, 'Failed to load projects');
   },
 
   getGallery: async (album?: string): Promise<GalleryImage[]> => {
     const url = album && album !== 'All' ? `/api/gallery?album=${encodeURIComponent(album)}` : '/api/gallery';
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load gallery');
-    return res.json();
+    return safeJson<GalleryImage[]>(res, 'Failed to load gallery');
   },
 
   submitJoinApplication: async (data: Partial<JoinApplication>): Promise<{ success: boolean; message: string; application_id: string; application?: JoinApplication }> => {
@@ -278,9 +264,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to submit application');
-    return result;
+    return safeJson(res, 'Failed to submit application');
   },
 
   submitApplication: async (data: Partial<JoinApplication>): Promise<{ success: boolean; message: string; application_id: string; application?: JoinApplication }> => {
@@ -289,9 +273,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to submit application');
-    return result;
+    return safeJson(res, 'Failed to submit application');
   },
 
   submitContactMessage: async (data: { name: string; email: string; subject: string; message: string }): Promise<{ success: boolean; message: string }> => {
@@ -300,15 +282,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to send message');
-    return result;
+    return safeJson(res, 'Failed to send message');
   },
 
   search: async (query: string): Promise<{ events: Event[]; announcements: Announcement[]; projects: Project[] }> => {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error('Search failed');
-    return res.json();
+    return safeJson(res, 'Search failed');
   },
 
   // Auth
@@ -390,10 +369,7 @@ export const api = {
               category,
             }),
           });
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || 'Image upload failed. Please try again.');
-          }
+          const data = await safeJson(res, 'Image upload failed. Please try again.');
           resolve(data);
         } catch (err: any) {
           reject(err);
@@ -406,11 +382,7 @@ export const api = {
   // Admin Whitelist & Access Control Management (Super Admin)
   adminGetAdmins: async () => {
     const res = await fetch('/api/admin/admins', { headers: authHeaders() });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Failed to fetch administrators list' }));
-      throw new Error(err.error || 'Failed to fetch administrators list');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to fetch administrators list');
   },
 
   adminCreateAdmin: async (data: {
@@ -427,9 +399,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to create administrator');
-    return result;
+    return safeJson(res, 'Failed to create administrator');
   },
 
   adminUpdateAdmin: async (
@@ -447,9 +417,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update administrator');
-    return result;
+    return safeJson(res, 'Failed to update administrator');
   },
 
   adminSetAdminPassword: async (id: string, password: string) => {
@@ -458,9 +426,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ password, newPassword: password }),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to set administrator password');
-    return result;
+    return safeJson(res, 'Failed to set administrator password');
   },
 
   adminResetAdminPassword: async (id: string, password?: string) => {
@@ -469,9 +435,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ password, newPassword: password }),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to reset administrator password');
-    return result;
+    return safeJson(res, 'Failed to reset administrator password');
   },
 
   adminUpdateAdminStatus: async (id: string, status: 'ACTIVE' | 'INACTIVE' | 'REVOKED') => {
@@ -480,9 +444,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ status }),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update administrator status');
-    return result;
+    return safeJson(res, 'Failed to update administrator status');
   },
 
   adminDeleteAdmin: async (id: string) => {
@@ -490,16 +452,13 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to delete administrator');
-    return result;
+    return safeJson(res, 'Failed to delete administrator');
   },
 
   // Admin Profile & Security
   adminGetProfile: async () => {
     const res = await fetch('/api/admin/profile', { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load admin profile');
-    return res.json();
+    return safeJson(res, 'Failed to load admin profile');
   },
 
   adminUpdateProfile: async (data: { email?: string; username?: string }) => {
@@ -508,8 +467,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update profile');
+    const result = await safeJson(res, 'Failed to update profile');
     if (result.user) {
       authStorage.setUser(result.user);
     }
@@ -522,16 +480,13 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to change password');
-    return result;
+    return safeJson(res, 'Failed to change password');
   },
 
   // Admin APIs
   getAdminOverview: async () => {
     const res = await fetch('/api/admin/overview', { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch admin overview');
-    return res.json();
+    return safeJson(res, 'Failed to fetch admin overview');
   },
 
   adminCreateEvent: async (eventData: Partial<Event>) => {
@@ -540,8 +495,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(eventData),
     });
-    if (!res.ok) throw new Error('Failed to create event');
-    return res.json();
+    return safeJson(res, 'Failed to create event');
   },
 
   adminUpdateEvent: async (id: string, eventData: Partial<Event>) => {
@@ -550,8 +504,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(eventData),
     });
-    if (!res.ok) throw new Error('Failed to update event');
-    return res.json();
+    return safeJson(res, 'Failed to update event');
   },
 
   adminDuplicateEvent: async (id: string) => {
@@ -559,8 +512,7 @@ export const api = {
       method: 'POST',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to duplicate event');
-    return res.json();
+    return safeJson(res, 'Failed to duplicate event');
   },
 
   adminDeleteEvent: async (id: string) => {
@@ -568,16 +520,14 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete event');
-    return res.json();
+    return safeJson(res, 'Failed to delete event');
   },
 
   adminGetEventRegistrations: async (eventId: string): Promise<EventRegistration[]> => {
     const res = await fetch(`/api/admin/events/${encodeURIComponent(eventId)}/registrations`, {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to load event registrations');
-    return res.json();
+    return safeJson<EventRegistration[]>(res, 'Failed to load event registrations');
   },
 
   adminUpdateEventWinners: async (
@@ -595,9 +545,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update winners');
-    return result;
+    return safeJson(res, 'Failed to update winners');
   },
 
   adminDeleteEventWinner: async (eventId: string, position: string) => {
@@ -605,9 +553,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to remove winner');
-    return result;
+    return safeJson(res, 'Failed to remove winner');
   },
 
   adminCreateAnnouncement: async (data: Partial<Announcement>) => {
@@ -616,8 +562,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create announcement');
-    return res.json();
+    return safeJson(res, 'Failed to create announcement');
   },
 
   adminUpdateAnnouncement: async (id: string, data: Partial<Announcement>) => {
@@ -626,8 +571,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update announcement');
-    return res.json();
+    return safeJson(res, 'Failed to update announcement');
   },
 
   adminDeleteAnnouncement: async (id: string) => {
@@ -635,8 +579,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete announcement');
-    return res.json();
+    return safeJson(res, 'Failed to delete announcement');
   },
 
   adminGetApplications: async (): Promise<JoinApplication[]> => {
@@ -646,11 +589,7 @@ export const api = {
       window.dispatchEvent(new CustomEvent('auth_state_changed', { detail: { authenticated: false } }));
       return [];
     }
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to load applications');
-    }
-    const data = await res.json();
+    const data = await safeJson(res, 'Failed to load applications');
     return Array.isArray(data) ? data : [];
   },
 
@@ -660,11 +599,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ status, reviewer_notes }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to update application');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to update application');
   },
 
   adminDeleteApplication: async (id: string) => {
@@ -672,11 +607,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to delete application');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to delete application');
   },
 
   adminGetRegistrations: async (eventId?: string): Promise<EventRegistration[]> => {
@@ -687,11 +618,7 @@ export const api = {
       window.dispatchEvent(new CustomEvent('auth_state_changed', { detail: { authenticated: false } }));
       return [];
     }
-    if (!res.ok) {
-      const errData = await res.json().catch(() => null);
-      throw new Error(errData?.error || 'Failed to load registrations');
-    }
-    const data = await res.json();
+    const data = await safeJson(res, 'Failed to load registrations');
     return Array.isArray(data) ? data : [];
   },
 
@@ -701,11 +628,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ status }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to update registration');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to update registration');
   },
 
   adminDeleteRegistration: async (id: string) => {
@@ -713,11 +636,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to delete registration');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to delete registration');
   },
 
   adminGetMessages: async (): Promise<ContactMessage[]> => {
@@ -727,11 +646,7 @@ export const api = {
       window.dispatchEvent(new CustomEvent('auth_state_changed', { detail: { authenticated: false } }));
       return [];
     }
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || 'Failed to load messages');
-    }
-    const data = await res.json();
+    const data = await safeJson(res, 'Failed to load messages');
     return Array.isArray(data) ? data : [];
   },
 
@@ -741,8 +656,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update message');
-    return res.json();
+    return safeJson(res, 'Failed to update message');
   },
 
   adminDeleteMessage: async (id: string) => {
@@ -750,8 +664,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete message');
-    return res.json();
+    return safeJson(res, 'Failed to delete message');
   },
 
   adminCreateTeamMember: async (data: Partial<TeamMember>) => {
@@ -760,8 +673,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create team member');
-    return res.json();
+    return safeJson(res, 'Failed to create team member');
   },
 
   adminUpdateTeamMember: async (id: string, data: Partial<TeamMember>) => {
@@ -770,8 +682,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update team member');
-    return res.json();
+    return safeJson(res, 'Failed to update team member');
   },
 
   adminDeleteTeamMember: async (id: string) => {
@@ -779,8 +690,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete team member');
-    return res.json();
+    return safeJson(res, 'Failed to delete team member');
   },
 
   adminCreateProject: async (data: Partial<Project>) => {
@@ -789,8 +699,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create project');
-    return res.json();
+    return safeJson(res, 'Failed to create project');
   },
 
   adminUpdateProject: async (id: string, data: Partial<Project>) => {
@@ -799,8 +708,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update project');
-    return res.json();
+    return safeJson(res, 'Failed to update project');
   },
 
   adminDeleteProject: async (id: string) => {
@@ -808,8 +716,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete project');
-    return res.json();
+    return safeJson(res, 'Failed to delete project');
   },
 
   adminCreateGalleryItem: async (data: Partial<GalleryImage>) => {
@@ -818,8 +725,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to add gallery item');
-    return res.json();
+    return safeJson(res, 'Failed to add gallery item');
   },
 
   adminUpdateGalleryItem: async (id: string, data: Partial<GalleryImage>) => {
@@ -828,8 +734,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update gallery item');
-    return res.json();
+    return safeJson(res, 'Failed to update gallery item');
   },
 
   adminDeleteGalleryItem: async (id: string) => {
@@ -837,8 +742,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete gallery item');
-    return res.json();
+    return safeJson(res, 'Failed to delete gallery item');
   },
 
   adminUpdateStats: async (stats: Partial<SiteStats>) => {
@@ -847,16 +751,14 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(stats),
     });
-    if (!res.ok) throw new Error('Failed to update stats');
-    return res.json();
+    return safeJson(res, 'Failed to update stats');
   },
 
   adminGetCommunityImpactStats: async (): Promise<CommunityImpactStat[]> => {
     const res = await fetch('/api/admin/community-impact', {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to load community impact statistics');
-    return res.json();
+    return safeJson<CommunityImpactStat[]>(res, 'Failed to load community impact statistics');
   },
 
   adminUpdateCommunityImpactStat: async (
@@ -868,11 +770,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to update community impact statistic');
-    }
-    return res.json();
+    return safeJson<CommunityImpactStat>(res, 'Failed to update community impact statistic');
   },
 
   adminSaveAllCommunityImpactStats: async (
@@ -883,11 +781,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(stats),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to save community impact statistics');
-    }
-    return res.json();
+    return safeJson<CommunityImpactStat[]>(res, 'Failed to save community impact statistics');
   },
 
   adminCreateCommunityImpactStat: async (
@@ -898,11 +792,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to create community impact statistic');
-    }
-    return res.json();
+    return safeJson<CommunityImpactStat>(res, 'Failed to create community impact statistic');
   },
 
   adminDeleteCommunityImpactStat: async (id: string): Promise<{ success: boolean; message?: string }> => {
@@ -910,11 +800,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to delete community impact statistic');
-    }
-    return res.json();
+    return safeJson(res, 'Failed to delete community impact statistic');
   },
 
   adminUpdateSettings: async (settings: Partial<SiteSettings>) => {
@@ -923,8 +809,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(settings),
     });
-    if (!res.ok) throw new Error('Failed to update settings');
-    return res.json();
+    return safeJson(res, 'Failed to update settings');
   },
 
   adminGetEmailStatus: async (): Promise<{
@@ -945,8 +830,7 @@ export const api = {
     const res = await fetch('/api/admin/email/status', {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to fetch email status');
-    return res.json();
+    return safeJson(res, 'Failed to fetch email status');
   },
 
   adminSendTestEmail: async (email: string): Promise<{ success: boolean; message: string }> => {
@@ -955,9 +839,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify({ email }),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to send test email');
-    return result;
+    return safeJson(res, 'Failed to send test email');
   },
 
   adminResendEventPassEmail: async (registrationId: string): Promise<{ success: boolean; message: string }> => {
@@ -965,9 +847,7 @@ export const api = {
       method: 'POST',
       headers: authHeaders(),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to resend event pass email');
-    return result;
+    return safeJson(res, 'Failed to resend event pass email');
   },
 
   getSupabaseSchemaSql: async (): Promise<string> => {
@@ -1141,15 +1021,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to subscribe to newsletter');
-    return result;
+    return safeJson(res, 'Failed to subscribe to newsletter');
   },
 
   adminGetNewsletterSubscribers: async (): Promise<NewsletterSubscriber[]> => {
     const res = await fetch('/api/admin/newsletter/subscribers', { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load subscribers');
-    return res.json();
+    return safeJson<NewsletterSubscriber[]>(res, 'Failed to load subscribers');
   },
 
   adminDeleteNewsletterSubscriber: async (id: string): Promise<{ success: boolean }> => {
@@ -1157,14 +1034,12 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete subscriber');
-    return res.json();
+    return safeJson(res, 'Failed to delete subscriber');
   },
 
   adminGetNewsletterBroadcasts: async (): Promise<NewsletterBroadcast[]> => {
     const res = await fetch('/api/admin/newsletter/broadcasts', { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load broadcasts');
-    return res.json();
+    return safeJson<NewsletterBroadcast[]>(res, 'Failed to load broadcasts');
   },
 
   adminSendNewsletterBroadcast: async (data: { subject: string; message: string; target?: string }): Promise<{ success: boolean; message: string; broadcast: NewsletterBroadcast }> => {
@@ -1173,9 +1048,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to send broadcast');
-    return result;
+    return safeJson(res, 'Failed to send broadcast');
   },
 
   // ==========================================
@@ -1184,8 +1057,7 @@ export const api = {
   getCertificates: async (q?: string): Promise<Certificate[]> => {
     const url = q ? `/api/certificates?q=${encodeURIComponent(q)}` : '/api/certificates';
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load certificates');
-    return res.json();
+    return safeJson<Certificate[]>(res, 'Failed to load certificates');
   },
 
   verifyCertificate: async (code: string): Promise<{
@@ -1201,14 +1073,12 @@ export const api = {
     message?: string;
   }> => {
     const res = await fetch(`/api/certificates/verify/${encodeURIComponent(code.trim())}`);
-    const result = await res.json();
-    return result;
+    return safeJson(res, 'Verification lookup failed');
   },
 
   adminGetCertificates: async (): Promise<Certificate[]> => {
     const res = await fetch('/api/admin/certificates', { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load certificates');
-    return res.json();
+    return safeJson<Certificate[]>(res, 'Failed to load certificates');
   },
 
   adminCreateCertificate: async (data: Partial<Certificate>): Promise<Certificate> => {
@@ -1217,9 +1087,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to create certificate');
-    return result;
+    return safeJson<Certificate>(res, 'Failed to create certificate');
   },
 
   adminBatchCreateCertificates: async (data: {
@@ -1236,9 +1104,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to batch generate certificates');
-    return result;
+    return safeJson(res, 'Failed to batch generate certificates');
   },
 
   adminUpdateCertificate: async (id: string, data: Partial<Certificate>): Promise<Certificate> => {
@@ -1247,9 +1113,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to update certificate');
-    return result;
+    return safeJson<Certificate>(res, 'Failed to update certificate');
   },
 
   adminDeleteCertificate: async (id: string): Promise<{ success: boolean }> => {
@@ -1257,8 +1121,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete certificate');
-    return res.json();
+    return safeJson(res, 'Failed to delete certificate');
   },
 
   // ==========================================
@@ -1267,8 +1130,7 @@ export const api = {
   adminGetCheckins: async (eventId?: string): Promise<AttendanceRecord[]> => {
     const url = eventId ? `/api/admin/checkins?event_id=${encodeURIComponent(eventId)}` : '/api/admin/checkins';
     const res = await fetch(url, { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load check-ins');
-    return res.json();
+    return safeJson<AttendanceRecord[]>(res, 'Failed to load check-ins');
   },
 
   adminVerifyAttendance: async (data: {
@@ -1280,8 +1142,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    return result;
+    return safeJson(res, 'Failed to verify attendance code');
   },
 
   adminGetAttendanceRoster: async (eventId?: string): Promise<AttendanceRosterResponse> => {
@@ -1289,8 +1150,7 @@ export const api = {
       ? `/api/admin/attendance/roster?event_id=${encodeURIComponent(eventId)}`
       : '/api/admin/attendance/roster';
     const res = await fetch(url, { headers: authHeaders() });
-    if (!res.ok) throw new Error('Failed to load attendance roster');
-    return res.json();
+    return safeJson<AttendanceRosterResponse>(res, 'Failed to load attendance roster');
   },
 
   adminCheckinParticipant: async (data: {
@@ -1306,14 +1166,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) {
-      const error: any = new Error(result.error || 'Check-in failed');
-      error.status = result.status;
-      error.details = result;
-      throw error;
-    }
-    return result;
+    return safeJson(res, 'Check-in failed');
   },
 
   adminDeleteCheckin: async (id: string): Promise<{ success: boolean }> => {
@@ -1321,8 +1174,7 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to delete check-in record');
-    return res.json();
+    return safeJson(res, 'Failed to delete check-in record');
   },
 
   // ==========================================
@@ -1332,16 +1184,14 @@ export const api = {
     const res = await fetch('/api/admin/audit-logs', {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to load audit logs');
-    return res.json();
+    return safeJson<AuditLog[]>(res, 'Failed to load audit logs');
   },
 
   adminExportBackup: async (): Promise<any> => {
     const res = await fetch('/api/admin/backup/export', {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to export database backup');
-    return res.json();
+    return safeJson(res, 'Failed to export database backup');
   },
 
   adminRestoreBackup: async (data: any): Promise<{ success: boolean; message: string }> => {
@@ -1350,9 +1200,7 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to restore database');
-    return result;
+    return safeJson(res, 'Failed to restore database');
   },
 };
 

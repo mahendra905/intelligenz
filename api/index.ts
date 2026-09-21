@@ -22,11 +22,23 @@ export default function handler(req: any, res: any) {
   } catch (err: any) {
     console.error('[Vercel Serverless Error] Uncaught function execution error:', err?.message || err);
     if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        error: 'Authentication service temporarily unavailable',
-        message: 'Authentication service temporarily unavailable',
-      });
+      if (typeof res.status === 'function' && typeof res.json === 'function') {
+        res.status(500).json({
+          success: false,
+          error: 'Service temporarily unavailable',
+          message: 'Service temporarily unavailable',
+        });
+      } else {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(
+          JSON.stringify({
+            success: false,
+            error: 'Service temporarily unavailable',
+            message: 'Service temporarily unavailable',
+          })
+        );
+      }
     }
   }
 }
