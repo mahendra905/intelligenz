@@ -24,6 +24,37 @@ import {
   upsertSupabaseRecord,
   deleteSupabaseRecord,
   checkSupabaseTablesExist,
+  getEventsFromSupabase,
+  getEventByIdOrSlugFromSupabase,
+  createEventInSupabase,
+  updateEventInSupabase,
+  deleteEventFromSupabase,
+  updateEventWinnersInSupabase,
+  normalizeEvent,
+  sanitizeEventPayload,
+  getTeamFromSupabase,
+  upsertTeamMemberInSupabase,
+  deleteTeamMemberFromSupabase,
+  getProjectsFromSupabase,
+  upsertProjectInSupabase,
+  deleteProjectFromSupabase,
+  getGalleryFromSupabase,
+  upsertGalleryItemInSupabase,
+  deleteGalleryItemFromSupabase,
+  getAnnouncementsFromSupabase,
+  createAnnouncementInSupabase,
+  updateAnnouncementInSupabase,
+  deleteAnnouncementFromSupabase,
+  getCommunityImpactStatsFromSupabase,
+  upsertCommunityImpactStatInSupabase,
+  saveAllCommunityImpactStatsInSupabase,
+  deleteCommunityImpactStatFromSupabase,
+  getSettingsFromSupabase,
+  saveSettingsInSupabase,
+  getStatsFromSupabase,
+  saveStatsInSupabase,
+  filterObjectByAllowedColumns,
+  REGISTRATION_ALLOWED_COLUMNS,
 } from './supabaseRepo.js';
 export type EventStatus =
   | 'Upcoming'
@@ -1361,6 +1392,45 @@ async function ensureSupabaseHydrated(force = false): Promise<void> {
       if (Array.isArray(supabaseData.events)) {
         db.events = supabaseData.events;
       }
+      if (Array.isArray(supabaseData.announcements)) {
+        db.announcements = supabaseData.announcements;
+      }
+      if (Array.isArray(supabaseData.team)) {
+        db.team = supabaseData.team;
+      }
+      if (Array.isArray(supabaseData.projects)) {
+        db.projects = supabaseData.projects;
+      }
+      if (Array.isArray(supabaseData.gallery)) {
+        db.gallery = supabaseData.gallery;
+      }
+      if (Array.isArray(supabaseData.join_applications)) {
+        db.join_applications = supabaseData.join_applications;
+      }
+      if (Array.isArray(supabaseData.registrations)) {
+        db.registrations = supabaseData.registrations;
+      }
+      if (Array.isArray(supabaseData.messages)) {
+        db.messages = supabaseData.messages;
+      }
+      if (Array.isArray(supabaseData.certificates)) {
+        db.certificates = supabaseData.certificates;
+      }
+      if (Array.isArray(supabaseData.checkins)) {
+        db.checkins = supabaseData.checkins;
+      }
+      if (Array.isArray(supabaseData.newsletter_subscribers)) {
+        db.newsletter_subscribers = supabaseData.newsletter_subscribers;
+      }
+      if (Array.isArray(supabaseData.newsletter_broadcasts)) {
+        db.newsletter_broadcasts = supabaseData.newsletter_broadcasts;
+      }
+      if (Array.isArray(supabaseData.community_impact_stats)) {
+        db.community_impact_stats = supabaseData.community_impact_stats;
+      }
+      if (Array.isArray(supabaseData.audit_logs)) {
+        db.audit_logs = supabaseData.audit_logs;
+      }
       if (Array.isArray(supabaseData.admin_users) && supabaseData.admin_users.length > 0) {
         db.admin_users = supabaseData.admin_users;
         if (process.env.ADMIN_BOOTSTRAP_PASSWORD) {
@@ -1395,21 +1465,6 @@ async function ensureSupabaseHydrated(force = false): Promise<void> {
       if (supabaseData.stats && Object.keys(supabaseData.stats).length > 0) {
         db.stats = supabaseData.stats;
       }
-      if (Array.isArray(supabaseData.announcements) && supabaseData.announcements.length > 0) {
-        db.announcements = supabaseData.announcements;
-      }
-      if (Array.isArray(supabaseData.team) && supabaseData.team.length > 0) {
-        db.team = supabaseData.team;
-      }
-      if (Array.isArray(supabaseData.projects) && supabaseData.projects.length > 0) {
-        db.projects = supabaseData.projects;
-      }
-      if (Array.isArray(supabaseData.gallery) && supabaseData.gallery.length > 0) {
-        db.gallery = supabaseData.gallery;
-      }
-      if (Array.isArray(supabaseData.community_impact_stats) && supabaseData.community_impact_stats.length > 0) {
-        db.community_impact_stats = supabaseData.community_impact_stats;
-      }
       isSupabaseHydrated = true;
       lastHydrationTime = now;
     }
@@ -1428,89 +1483,24 @@ export async function findEventByIdOrSlug(identifier: string): Promise<Event | n
 
   // 1. Direct Supabase query (canonical database source of truth)
   if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-    const client = getSupabaseClient();
-    if (client) {
-      try {
-        // Query by id
-        const { data: byId, error: errId } = await client
-          .from('events')
-          .select('*')
-          .eq('id', cleanId)
-          .maybeSingle();
-
-        if (byId && !errId) {
-          const pType = byId.participation_type || 'SOLO';
-          const normalized: Event = {
-            ...byId,
-            participation_type: pType,
-            min_team_size: byId.min_team_size || (pType === 'SOLO' ? 1 : 2),
-            max_team_size: byId.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
-          };
-          const idx = db.events.findIndex((e) => e.id === normalized.id);
-          if (idx !== -1) {
-            db.events[idx] = normalized;
-          } else {
-            db.events.unshift(normalized);
-          }
-          return normalized;
-        }
-
-        // Query by slug
-        const { data: bySlug, error: errSlug } = await client
-          .from('events')
-          .select('*')
-          .eq('slug', cleanId)
-          .maybeSingle();
-
-        if (bySlug && !errSlug) {
-          const pType = bySlug.participation_type || 'SOLO';
-          const normalized: Event = {
-            ...bySlug,
-            participation_type: pType,
-            min_team_size: bySlug.min_team_size || (pType === 'SOLO' ? 1 : 2),
-            max_team_size: bySlug.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
-          };
-          const idx = db.events.findIndex((e) => e.id === normalized.id);
-          if (idx !== -1) {
-            db.events[idx] = normalized;
-          } else {
-            db.events.unshift(normalized);
-          }
-          return normalized;
-        }
-
-        // Try case-insensitive slug query as extra resilience
-        const { data: bySlugIlike, error: errIlike } = await client
-          .from('events')
-          .select('*')
-          .ilike('slug', cleanId)
-          .maybeSingle();
-
-        if (bySlugIlike && !errIlike) {
-          const pType = bySlugIlike.participation_type || 'SOLO';
-          const normalized: Event = {
-            ...bySlugIlike,
-            participation_type: pType,
-            min_team_size: bySlugIlike.min_team_size || (pType === 'SOLO' ? 1 : 2),
-            max_team_size: bySlugIlike.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
-          };
-          return normalized;
-        }
-
-        if (!errId && !errSlug && !errIlike) {
-          // Event definitely does not exist in Supabase (e.g. deleted by admin); purge stale copy
-          db.events = db.events.filter(
-            (e) => e.id !== cleanId && e.slug !== cleanId && e.slug?.toLowerCase() !== cleanId.toLowerCase()
-          );
-          return null;
-        }
-      } catch (err: any) {
-        console.warn('[Supabase Event Lookup Warning]:', err?.message);
+    const { success, event } = await getEventByIdOrSlugFromSupabase(cleanId);
+    if (success && event) {
+      const idx = db.events.findIndex((e) => e.id === event.id);
+      if (idx !== -1) {
+        db.events[idx] = event;
+      } else {
+        db.events.unshift(event);
       }
+      return event;
     }
+    // When Supabase is active, if the event was not found in Supabase (e.g. deleted), purge any stale local copy
+    db.events = db.events.filter(
+      (e) => e.id !== cleanId && e.slug !== cleanId && e.slug?.toLowerCase() !== cleanId.toLowerCase()
+    );
+    return null;
   }
 
-  // 2. Query in-memory / local database
+  // 2. Query in-memory / local database only when Supabase is not configured
   const localEvent = db.events.find(
     (e) => e.id === cleanId || e.slug === cleanId || e.slug?.toLowerCase() === cleanId.toLowerCase()
   );
@@ -2441,25 +2431,60 @@ app.use(async (req, res, next) => {
   });
 
   // Settings & Metadata
-  app.get('/api/settings', (req, res) => {
+  app.get('/api/settings', async (req, res) => {
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaSettings = await getSettingsFromSupabase();
+      if (supaSettings) {
+        db.settings = { ...db.settings, ...supaSettings };
+        return res.json(db.settings);
+      }
+    }
     res.json(db.settings);
   });
 
   // Stats
-  app.get('/api/stats', (req, res) => {
-    const activeCommunityStats = (db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS)
+  app.get('/api/stats', async (req, res) => {
+    let baseStats = db.stats;
+    let impactStats = db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const [supaStats, supaImpact] = await Promise.all([
+        getStatsFromSupabase(),
+        getCommunityImpactStatsFromSupabase(),
+      ]);
+      if (supaStats) {
+        baseStats = { ...baseStats, ...supaStats };
+        db.stats = baseStats;
+      }
+      if (supaImpact && supaImpact.length > 0) {
+        impactStats = supaImpact;
+        db.community_impact_stats = supaImpact;
+      }
+    }
+
+    const activeCommunityStats = impactStats
       .filter((s) => s.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     res.json({
-      ...db.stats,
+      ...baseStats,
       community_impact_stats: activeCommunityStats,
     });
   });
 
   // Public Community Impact Statistics
-  app.get(['/api/public/community-impact', '/api/community-impact'], (req, res) => {
-    const activeStats = (db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS)
+  app.get(['/api/public/community-impact', '/api/community-impact'], async (req, res) => {
+    let impactStats = db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaImpact = await getCommunityImpactStatsFromSupabase();
+      if (supaImpact && supaImpact.length > 0) {
+        impactStats = supaImpact;
+        db.community_impact_stats = supaImpact;
+      }
+    }
+
+    const activeStats = impactStats
       .filter((s) => s.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     res.json(activeStats);
@@ -2509,36 +2534,24 @@ app.use(async (req, res, next) => {
     const status = req.query.status as string;
     const featured = req.query.featured === 'true';
 
-    let eventsList = [...db.events];
-
     if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          const { data, error } = await client
-            .from('events')
-            .select('*')
-            .order('date', { ascending: false });
+      const { success, events, error } = await getEventsFromSupabase({
+        category,
+        status,
+        featured,
+      });
 
-          if (!error && Array.isArray(data)) {
-            eventsList = data.map((evt: any) => {
-              const pType = evt.participation_type || 'SOLO';
-              return {
-                ...evt,
-                participation_type: pType,
-                min_team_size: evt.min_team_size || (pType === 'SOLO' ? 1 : 2),
-                max_team_size: evt.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
-              };
-            });
-            db.events = eventsList;
-          }
-        } catch (err: any) {
-          console.warn('[Supabase GET /api/events Warning]:', err?.message);
-        }
+      if (success && events) {
+        db.events = events; // Keep memory cache in sync
+        return res.json(events);
+      }
+      if (!success) {
+        console.error('[GET /api/events Supabase Error]:', error);
+        return res.status(500).json({ error: error || 'Failed to fetch events from database' });
       }
     }
 
-    let result = eventsList;
+    let result = [...db.events];
     if (category && category !== 'All') {
       result = result.filter((e) => e.category === category);
     }
@@ -2555,6 +2568,18 @@ app.use(async (req, res, next) => {
   });
 
   app.get('/api/events/:slug', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const { success, notFound, event, error } = await getEventByIdOrSlugFromSupabase(req.params.slug);
+      if (notFound) {
+        return res.status(404).json({ error: 'Event not found in database' });
+      }
+      if (!success || !event) {
+        return res.status(500).json({ error: error || 'Database error fetching event' });
+      }
+      return res.json(event);
+    }
+
     const event = await findEventByIdOrSlug(req.params.slug);
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
@@ -2869,30 +2894,12 @@ app.use(async (req, res, next) => {
       const client = getSupabaseClient();
       if (client) {
         try {
-          const { error: insErr } = await client.from('registrations').insert({
-            id: newReg.id,
-            event_id: event.id,
-            event_title: event.title,
-            full_name: newReg.full_name,
-            participant_name: newReg.participant_name,
-            email: newReg.email,
-            phone: newReg.phone,
-            department: newReg.department,
-            year: newReg.year,
-            roll_number: newReg.roll_number,
-            participation_type: newReg.participation_type,
-            team_name: newReg.team_name,
-            team_members: newReg.team_members || [],
-            ticket_code: newReg.ticket_code,
-            qr_token: newReg.qr_token,
-            qr_payload: newReg.qr_payload,
-            status: newReg.status,
-            email_status: newReg.email_status,
-            created_at: newReg.created_at,
-          });
+          const cleanReg = filterObjectByAllowedColumns(newReg, REGISTRATION_ALLOWED_COLUMNS);
+          const { error: insErr } = await client.from('registrations').insert(cleanReg);
 
           if (insErr) {
-            console.warn('[Supabase Registration Insert Error]:', insErr.message);
+            console.error('[Supabase Registration Insert Error]:', insErr.message);
+            return res.status(500).json({ error: `Database error storing registration: ${insErr.message}` });
           }
 
           await client
@@ -2900,7 +2907,8 @@ app.use(async (req, res, next) => {
             .update({ current_participants: event.current_participants })
             .eq('id', event.id);
         } catch (err: any) {
-          console.warn('[Supabase Direct Registration Save Warning]:', err?.message);
+          console.error('[Supabase Direct Registration Save Exception]:', err?.message);
+          return res.status(500).json({ error: `Database error: ${err.message}` });
         }
       }
     }
@@ -2955,11 +2963,20 @@ app.use(async (req, res, next) => {
   });
 
   // ANNOUNCEMENTS
-  app.get('/api/announcements', (req, res) => {
+  app.get('/api/announcements', async (req, res) => {
     const category = req.query.category as string;
     const featured = req.query.featured === 'true';
 
-    let result = [...db.announcements];
+    let allAnnouncements = db.announcements;
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaAnns = await getAnnouncementsFromSupabase();
+      if (supaAnns) {
+        allAnnouncements = supaAnns;
+        db.announcements = supaAnns;
+      }
+    }
+
+    let result = [...allAnnouncements];
     if (category && category !== 'All') {
       result = result.filter((a) => a.category === category);
     }
@@ -2971,8 +2988,22 @@ app.use(async (req, res, next) => {
     res.json(result);
   });
 
-  app.get('/api/announcements/:slug', (req, res) => {
-    const ann = db.announcements.find((a) => a.slug === req.params.slug || a.id === req.params.slug);
+  app.get('/api/announcements/:slug', async (req, res) => {
+    const targetSlug = req.params.slug;
+    let ann = db.announcements.find((a) => a.slug === targetSlug || a.id === targetSlug);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client
+          .from('announcements')
+          .select('*')
+          .or(`id.eq.${targetSlug},slug.eq.${targetSlug}`)
+          .maybeSingle();
+        if (data) ann = data;
+      }
+    }
+
     if (!ann) {
       res.status(404).json({ error: 'Announcement not found' });
       return;
@@ -2981,8 +3012,17 @@ app.use(async (req, res, next) => {
   });
 
   // TEAM
-  app.get('/api/team', (req, res) => {
-    const sorted = [...db.team].sort((a, b) => {
+  app.get('/api/team', async (req, res) => {
+    let teamList = db.team;
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaTeam = await getTeamFromSupabase();
+      if (supaTeam) {
+        teamList = supaTeam;
+        db.team = supaTeam;
+      }
+    }
+
+    const sorted = [...teamList].sort((a, b) => {
       const orderA = a.order !== undefined ? a.order : (a.order_index !== undefined ? a.order_index : 999);
       const orderB = b.order !== undefined ? b.order : (b.order_index !== undefined ? b.order_index : 999);
       return orderA - orderB;
@@ -2991,9 +3031,19 @@ app.use(async (req, res, next) => {
   });
 
   // PROJECTS
-  app.get('/api/projects', (req, res) => {
+  app.get('/api/projects', async (req, res) => {
     const category = req.query.category as string;
-    let result = (db.projects || []).map((p) => {
+    let rawProjects = db.projects || [];
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaProjects = await getProjectsFromSupabase();
+      if (supaProjects) {
+        rawProjects = supaProjects;
+        db.projects = supaProjects;
+      }
+    }
+
+    let result = rawProjects.map((p) => {
       const techStack = Array.isArray(p.tech_stack)
         ? p.tech_stack
         : Array.isArray(p.technologies)
@@ -3020,9 +3070,19 @@ app.use(async (req, res, next) => {
   });
 
   // GALLERY
-  app.get('/api/gallery', (req, res) => {
+  app.get('/api/gallery', async (req, res) => {
     const album = req.query.album as string;
-    let result = [...db.gallery];
+    let galleryList = db.gallery;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaGallery = await getGalleryFromSupabase();
+      if (supaGallery) {
+        galleryList = supaGallery;
+        db.gallery = supaGallery;
+      }
+    }
+
+    let result = [...galleryList];
     if (album && album !== 'All') {
       result = result.filter((g) => g.album === album);
     }
@@ -3030,7 +3090,7 @@ app.use(async (req, res, next) => {
   });
 
   // JOIN US SUBMISSION (Public)
-  const handleJoinSubmission = (req: express.Request, res: express.Response) => {
+  const handleJoinSubmission = async (req: express.Request, res: express.Response) => {
     // Backend enforcement: reject submissions if Join Us Status is OFF
     const isJoinUsOpen = db.settings
       ? (db.settings.join_us_status !== undefined
@@ -3117,6 +3177,13 @@ app.use(async (req, res, next) => {
       created_at: new Date().toISOString(),
     };
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertSupabaseRecord('join_applications', newApp);
+      if (!supaRes.success) {
+        console.warn('[Supabase join application persistence warning]:', supaRes.error);
+      }
+    }
+
     db.join_applications.unshift(newApp);
     saveDatabase(db);
 
@@ -3132,7 +3199,7 @@ app.use(async (req, res, next) => {
   app.post('/api/join-applications', rateLimiter(20, 60000), handleJoinSubmission);
 
   // CONTACT MESSAGE (Public)
-  app.post('/api/contact', rateLimiter(10, 60000), (req, res) => {
+  app.post('/api/contact', rateLimiter(10, 60000), async (req, res) => {
     const { name, email, subject, message } = req.body;
     if (!name || !email || !subject || !message) {
       res.status(400).json({ error: 'All contact fields are required.' });
@@ -3150,6 +3217,13 @@ app.use(async (req, res, next) => {
       created_at: new Date().toISOString(),
     };
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertSupabaseRecord('messages', newMsg);
+      if (!supaRes.success) {
+        console.warn('[Supabase message persistence warning]:', supaRes.error);
+      }
+    }
+
     db.messages.unshift(newMsg);
     saveDatabase(db);
 
@@ -3162,7 +3236,7 @@ app.use(async (req, res, next) => {
   // ==========================================
   // NEWSLETTER SUBSCRIPTION (Public)
   // ==========================================
-  app.post('/api/newsletter/subscribe', rateLimiter(15, 60000), (req, res) => {
+  app.post('/api/newsletter/subscribe', rateLimiter(15, 60000), async (req, res) => {
     const { email, name, department } = req.body;
     const subscriberEmail = (email || '').trim().toLowerCase();
 
@@ -3179,6 +3253,9 @@ app.use(async (req, res, next) => {
       if (existing.status === 'Unsubscribed') {
         existing.status = 'Active';
         existing.subscribed_at = new Date().toISOString();
+        if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+          await upsertSupabaseRecord('newsletter_subscribers', existing);
+        }
         saveDatabase(db);
         res.json({
           success: true,
@@ -3202,6 +3279,13 @@ app.use(async (req, res, next) => {
       status: 'Active',
       source: req.body.source || 'Website',
     };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertSupabaseRecord('newsletter_subscribers', newSubscriber);
+      if (!supaRes.success) {
+        console.warn('[Supabase subscriber persistence warning]:', supaRes.error);
+      }
+    }
 
     db.newsletter_subscribers.unshift(newSubscriber);
     saveDatabase(db);
@@ -4245,431 +4329,375 @@ app.use(async (req, res, next) => {
 
   // Admin Events CRUD (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.post('/events', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const body = req.body;
-    const title = (body.title || 'Untitled Event').trim();
-    const slug = body.slug ? body.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `event-${Date.now()}`;
-    
-    let pType: ParticipationType = body.participation_type || 'SOLO';
-    if (!['SOLO', 'DUO', 'TEAM'].includes(pType)) {
-      pType = 'SOLO';
-    }
-
-    let minTeam = 1;
-    let maxTeam = 1;
-    if (pType === 'DUO') {
-      minTeam = 2;
-      maxTeam = 2;
-    } else if (pType === 'TEAM') {
-      minTeam = Math.max(2, Number(body.min_team_size) || 2);
-      maxTeam = Math.max(minTeam, Number(body.max_team_size) || 4);
-    }
-
-    const newEvent: Event = {
-      ...body,
-      id: body.id || `evt-${Date.now()}`,
-      title,
-      slug,
-      short_description: body.short_description || (body.description ? body.description.slice(0, 150) : ''),
-      participation_type: pType,
-      min_team_size: minTeam,
-      max_team_size: maxTeam,
-      current_participants: Number(body.current_participants) || 0,
-      maximum_participants: Number(body.maximum_participants) || 100,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    // 1. Direct Supabase write (primary database source of truth)
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          const { error: supaErr } = await client.from('events').upsert(newEvent);
-          if (supaErr) {
-            console.error('[Supabase Event Insert Error]:', supaErr.message);
-          }
-        } catch (err: any) {
-          console.error('[Supabase Event Insert Exception]:', err?.message);
-        }
+    try {
+      if (!req.body || !req.body.title || !String(req.body.title).trim()) {
+        return res.status(400).json({ error: 'Event title is required.' });
       }
+
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, event, error } = await createEventInSupabase(req.body);
+        if (!success || !event) {
+          console.error('[Admin Create Event Supabase Error]:', error);
+          return res.status(500).json({ error: error || 'Failed to persist event to Supabase database.' });
+        }
+
+        // Keep in-memory cache synchronized with verified Supabase record
+        const existingIndex = db.events.findIndex((e) => e.id === event.id || e.slug === event.slug);
+        if (existingIndex !== -1) {
+          db.events[existingIndex] = event;
+        } else {
+          db.events.unshift(event);
+        }
+        saveDatabase(db);
+
+        logAdminAction(
+          'Event Created',
+          'Event',
+          event.id,
+          `Created event "${event.title}" (${event.participation_type} participation)`,
+          req.adminUser?.email,
+          req
+        );
+
+        return res.status(201).json(event);
+      }
+
+      // Local fallback only if Supabase is not configured
+      const sanitized = sanitizeEventPayload(req.body, false);
+      const localEvent = normalizeEvent(sanitized);
+      db.events.unshift(localEvent);
+      saveDatabase(db);
+      return res.status(201).json(localEvent);
+    } catch (err: any) {
+      console.error('[Admin Create Event Exception]:', err);
+      return res.status(500).json({ error: err.message || 'Unexpected server error creating event.' });
     }
-
-    // 2. In-memory / local sync
-    const existingIndex = db.events.findIndex((e) => e.id === newEvent.id || e.slug === newEvent.slug);
-    if (existingIndex !== -1) {
-      db.events[existingIndex] = newEvent;
-    } else {
-      db.events.unshift(newEvent);
-    }
-    saveDatabase(db);
-
-    logAdminAction(
-      'Event Created',
-      'Event',
-      newEvent.id,
-      `Created event "${newEvent.title}" (${pType} participation)`,
-      req.adminUser?.email,
-      req
-    );
-
-    res.status(201).json(newEvent);
   });
 
   adminRouter.put('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const targetId = req.params.id;
-    let index = db.events.findIndex((e) => e.id === targetId || e.slug === targetId);
+    try {
+      const targetId = req.params.id;
 
-    // If not in local memory, query Supabase
-    if (index === -1 && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
-        if (data) {
-          db.events.push(data);
-          index = db.events.length - 1;
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, notFound, event, error } = await updateEventInSupabase(targetId, req.body);
+        if (notFound) {
+          return res.status(404).json({ error: `Event '${targetId}' not found in database.` });
         }
-      }
-    }
-
-    if (index === -1) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
-    }
-
-    const body = req.body;
-    let pType: ParticipationType = body.participation_type || db.events[index].participation_type || 'SOLO';
-    if (!['SOLO', 'DUO', 'TEAM'].includes(pType)) {
-      pType = 'SOLO';
-    }
-
-    let minTeam = 1;
-    let maxTeam = 1;
-    if (pType === 'DUO') {
-      minTeam = 2;
-      maxTeam = 2;
-    } else if (pType === 'TEAM') {
-      minTeam = Math.max(2, Number(body.min_team_size ?? db.events[index].min_team_size) || 2);
-      maxTeam = Math.max(minTeam, Number(body.max_team_size ?? db.events[index].max_team_size) || 4);
-    }
-
-    const updatedEvent: Event = {
-      ...db.events[index],
-      ...body,
-      id: db.events[index].id,
-      participation_type: pType,
-      min_team_size: minTeam,
-      max_team_size: maxTeam,
-      updated_at: new Date().toISOString(),
-    };
-
-    // 1. Direct Supabase write
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          const { error: supaErr } = await client.from('events').upsert(updatedEvent);
-          if (supaErr) {
-            console.error('[Supabase Event Update Error]:', supaErr.message);
-          }
-        } catch (err: any) {
-          console.error('[Supabase Event Update Exception]:', err?.message);
+        if (!success || !event) {
+          console.error('[Admin Update Event Supabase Error]:', error);
+          return res.status(500).json({ error: error || 'Failed to update event in Supabase database.' });
         }
+
+        // Keep in-memory cache synchronized with verified Supabase record
+        const existingIndex = db.events.findIndex((e) => e.id === event.id || e.slug === event.slug);
+        if (existingIndex !== -1) {
+          db.events[existingIndex] = event;
+        } else {
+          db.events.unshift(event);
+        }
+        saveDatabase(db);
+
+        logAdminAction(
+          'Event Updated',
+          'Event',
+          event.id,
+          `Updated event "${event.title}" (Status: ${event.status}, Type: ${event.participation_type})`,
+          req.adminUser?.email,
+          req
+        );
+
+        return res.json(event);
       }
+
+      // Local fallback only if Supabase is not configured
+      const index = db.events.findIndex((e) => e.id === targetId || e.slug === targetId);
+      if (index === -1) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      const updatedEvent = normalizeEvent({ ...db.events[index], ...req.body, updated_at: new Date().toISOString() });
+      db.events[index] = updatedEvent;
+      saveDatabase(db);
+      return res.json(updatedEvent);
+    } catch (err: any) {
+      console.error('[Admin Update Event Exception]:', err);
+      return res.status(500).json({ error: err.message || 'Unexpected server error updating event.' });
     }
-
-    // 2. In-memory / local sync
-    db.events[index] = updatedEvent;
-    saveDatabase(db);
-
-    logAdminAction(
-      'Event Updated',
-      'Event',
-      db.events[index].id,
-      `Updated event "${db.events[index].title}" (Status: ${db.events[index].status}, Type: ${pType})`,
-      req.adminUser?.email,
-      req
-    );
-
-    res.json(db.events[index]);
   });
 
   // Admin Get Event Registrations for Winner Selection
-  adminRouter.get('/events/:id/registrations', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const event = db.events.find((e) => e.id === req.params.id);
+  adminRouter.get('/events/:id/registrations', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    const targetId = req.params.id;
+    let event = await findEventByIdOrSlug(targetId);
     if (!event) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
+      return res.status(404).json({ error: 'Event not found' });
     }
-    const regs = db.registrations.filter((r) => r.event_id === event.id && r.status !== 'Cancelled');
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data, error } = await client
+          .from('registrations')
+          .select('*')
+          .eq('event_id', event.id)
+          .neq('status', 'Cancelled')
+          .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          return res.json(data);
+        }
+      }
+    }
+
+    const regs = db.registrations.filter((r) => r.event_id === event!.id && r.status !== 'Cancelled');
     res.json(regs);
   });
 
   // Admin Manage Event Winners (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.put('/events/:id/winners', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const targetId = req.params.id;
-    let event = db.events.find((e) => e.id === targetId || e.slug === targetId);
-    if (!event && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
-        if (data) {
-          event = data;
-          db.events.push(data);
-        }
-      }
-    }
-
-    if (!event) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
-    }
-
-    const { winners, first_registration_id, second_registration_id, third_registration_id, results } = req.body;
-
-    let finalWinners: EventWinner[] = [];
-
-    if (Array.isArray(winners)) {
-      // If direct array provided
-      finalWinners = winners.filter((w) => w && w.name);
-    } else {
-      // If mapped by position registration IDs
-      const positions = [
-        { pos: '1st Place', id: first_registration_id },
-        { pos: '2nd Place', id: second_registration_id },
-        { pos: '3rd Place', id: third_registration_id },
-      ];
-
-      const selectedIds = positions.map((p) => p.id).filter(Boolean) as string[];
-      // Validate uniqueness
-      const uniqueIds = new Set(selectedIds);
-      if (uniqueIds.size !== selectedIds.length) {
-        res.status(400).json({ error: 'Cannot assign the same registration/team to multiple winner positions.' });
-        return;
+    try {
+      const targetId = req.params.id;
+      const event = await findEventByIdOrSlug(targetId);
+      if (!event) {
+        return res.status(404).json({ error: 'Event not found in database.' });
       }
 
-      for (const p of positions) {
-        if (!p.id) continue;
-        const reg = db.registrations.find((r) => r.id === p.id && r.event_id === event.id);
-        if (!reg) {
-          res.status(400).json({ error: `Selected winner registration '${p.id}' does not belong to this event.` });
-          return;
+      const { winners, first_registration_id, second_registration_id, third_registration_id, results } = req.body;
+      let finalWinners: EventWinner[] = [];
+
+      if (Array.isArray(winners)) {
+        finalWinners = winners.filter((w) => w && w.name);
+      } else {
+        const positions = [
+          { pos: '1st Place', id: first_registration_id },
+          { pos: '2nd Place', id: second_registration_id },
+          { pos: '3rd Place', id: third_registration_id },
+        ];
+
+        const selectedIds = positions.map((p) => p.id).filter(Boolean) as string[];
+        const uniqueIds = new Set(selectedIds);
+        if (uniqueIds.size !== selectedIds.length) {
+          return res.status(400).json({ error: 'Cannot assign the same registration/team to multiple winner positions.' });
         }
 
-        const memberNames = reg.team_members && reg.team_members.length > 0
-          ? [reg.full_name, ...reg.team_members.map((m) => m.full_name)]
-          : [reg.full_name];
+        // Get registrations from Supabase if configured
+        let regs = db.registrations;
+        if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+          const client = getSupabaseClient();
+          if (client) {
+            const { data } = await client.from('registrations').select('*').eq('event_id', event.id);
+            if (data) regs = data;
+          }
+        }
 
-        finalWinners.push({
-          position: p.pos,
-          registration_id: reg.id,
-          name: reg.full_name,
-          team_name: reg.team_name,
-          members: memberNames,
-          members_detail: reg.team_members,
+        for (const p of positions) {
+          if (!p.id) continue;
+          const reg = regs.find((r) => r.id === p.id && r.event_id === event.id);
+          if (!reg) {
+            return res.status(400).json({ error: `Selected winner registration '${p.id}' does not belong to this event.` });
+          }
+
+          const memberNames = reg.team_members && reg.team_members.length > 0
+            ? [reg.full_name, ...reg.team_members.map((m: any) => m.full_name)]
+            : [reg.full_name];
+
+          finalWinners.push({
+            position: p.pos,
+            registration_id: reg.id,
+            name: reg.full_name,
+            team_name: reg.team_name,
+            members: memberNames,
+            members_detail: reg.team_members,
+          });
+        }
+      }
+
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, notFound, event: updatedEv, error } = await updateEventWinnersInSupabase(
+          event.id,
+          finalWinners,
+          typeof results === 'string' ? results : undefined
+        );
+
+        if (notFound) {
+          return res.status(404).json({ error: 'Event not found in database.' });
+        }
+        if (!success || !updatedEv) {
+          return res.status(500).json({ error: error || 'Failed to update winners in database.' });
+        }
+
+        const idx = db.events.findIndex((e) => e.id === updatedEv.id);
+        if (idx !== -1) db.events[idx] = updatedEv;
+        saveDatabase(db);
+
+        logAdminAction(
+          'Winners Updated',
+          'Event',
+          updatedEv.id,
+          `Published ${finalWinners.length} podium winners for event "${updatedEv.title}"`,
+          req.adminUser?.email,
+          req
+        );
+
+        return res.json({
+          success: true,
+          message: `Winners successfully updated for "${updatedEv.title}".`,
+          event: updatedEv,
         });
       }
+
+      // Local fallback
+      event.winners = finalWinners;
+      if (typeof results === 'string') event.results = results;
+      event.updated_at = new Date().toISOString();
+      saveDatabase(db);
+      return res.json({ success: true, message: `Winners updated for "${event.title}".`, event });
+    } catch (err: any) {
+      console.error('[Admin Winners Update Exception]:', err);
+      return res.status(500).json({ error: err.message || 'Server error updating winners' });
     }
-
-    event.winners = finalWinners;
-    if (typeof results === 'string') {
-      event.results = results;
-    }
-    event.updated_at = new Date().toISOString();
-
-    // 1. Direct Supabase write
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          await client.from('events').upsert(event);
-        } catch (err: any) {
-          console.error('[Supabase Winners Update Exception]:', err?.message);
-        }
-      }
-    }
-
-    saveDatabase(db);
-
-    logAdminAction(
-      'Winners Updated',
-      'Event',
-      event.id,
-      `Published ${finalWinners.length} podium winners for event "${event.title}"`,
-      req.adminUser?.email,
-      req
-    );
-
-    res.json({
-      success: true,
-      message: `Winners successfully updated for "${event.title}".`,
-      event,
-    });
   });
 
   // Admin Remove a Specific Winner Position
   adminRouter.delete('/events/:id/winners/:position', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const targetId = req.params.id;
-    let event = db.events.find((e) => e.id === targetId || e.slug === targetId);
-    if (!event && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
-        if (data) {
-          event = data;
-          db.events.push(data);
-        }
+    try {
+      const targetId = req.params.id;
+      const event = await findEventByIdOrSlug(targetId);
+      if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
       }
-    }
 
-    if (!event) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
-    }
-
-    const pos = decodeURIComponent(req.params.position).toLowerCase();
-    if (pos === 'all') {
-      event.winners = [];
-    } else {
-      event.winners = (event.winners || []).filter(
-        (w) => !w.position.toLowerCase().includes(pos)
-      );
-    }
-    event.updated_at = new Date().toISOString();
-
-    // 1. Direct Supabase write
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          await client.from('events').upsert(event);
-        } catch (err: any) {
-          console.error('[Supabase Winner Remove Exception]:', err?.message);
-        }
+      const pos = decodeURIComponent(req.params.position).toLowerCase();
+      let newWinners: EventWinner[] = [];
+      if (pos === 'all') {
+        newWinners = [];
+      } else {
+        newWinners = (event.winners || []).filter((w) => !w.position.toLowerCase().includes(pos));
       }
+
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, event: updatedEv, error } = await updateEventWinnersInSupabase(event.id, newWinners);
+        if (!success || !updatedEv) {
+          return res.status(500).json({ error: error || 'Failed to remove winner position in database.' });
+        }
+        const idx = db.events.findIndex((e) => e.id === updatedEv.id);
+        if (idx !== -1) db.events[idx] = updatedEv;
+        saveDatabase(db);
+        return res.json({ success: true, message: 'Winner position removed.', event: updatedEv });
+      }
+
+      event.winners = newWinners;
+      event.updated_at = new Date().toISOString();
+      saveDatabase(db);
+      return res.json({ success: true, message: 'Winner position removed.', event });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Server error removing winner' });
     }
-
-    saveDatabase(db);
-
-    logAdminAction(
-      'Winner Removed',
-      'Event',
-      event.id,
-      `Removed winner position (${req.params.position}) for event "${event.title}"`,
-      req.adminUser?.email,
-      req
-    );
-
-    res.json({ success: true, message: 'Winner position removed.', event });
   });
 
   adminRouter.delete('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const targetId = req.params.id;
-    let target = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    try {
+      const targetId = req.params.id;
 
-    // If not in local memory, query Supabase
-    if (!target && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
-        if (data) {
-          target = data;
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, notFound, event, error } = await deleteEventFromSupabase(targetId);
+        if (notFound) {
+          return res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
         }
-      }
-    }
-
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
-      return;
-    }
-
-    // 1. Remove from local memory FIRST so any concurrent sync will not re-insert it
-    db.events = db.events.filter((e) => e.id !== target.id && e.slug !== target.slug);
-
-    // 2. Delete from Supabase (Primary canonical source)
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          const { error: err1 } = await client.from('events').delete().eq('id', target.id);
-          if (err1) console.error('[Supabase Event Delete Error]:', err1.message);
-          if (target.slug) {
-            await client.from('events').delete().eq('slug', target.slug);
-          }
-        } catch (err: any) {
-          console.error('[Supabase Event Delete Error]:', err?.message);
+        if (!success) {
+          console.error('[Admin Delete Event Supabase Error]:', error);
+          return res.status(500).json({ success: false, error: error || 'Failed to delete event from database.' });
         }
+
+        const canonicalId = event?.id || targetId;
+        const canonicalSlug = event?.slug;
+
+        // Remove from local memory cache
+        db.events = db.events.filter((e) => e.id !== canonicalId && (!canonicalSlug || e.slug !== canonicalSlug));
+
+        // Clean up registrations & checkins for this event in memory
+        const relatedRegIds = new Set(db.registrations.filter((r) => r.event_id === canonicalId).map((r) => r.id));
+        db.registrations = db.registrations.filter((r) => r.event_id !== canonicalId);
+        db.checkins = db.checkins.filter((c) => c.event_id !== canonicalId && !relatedRegIds.has(c.registration_id));
+        saveDatabase(db);
+
+        logAdminAction(
+          'Event Deleted',
+          'Event',
+          canonicalId,
+          `Admin deleted event "${event?.title || targetId}"`,
+          req.adminUser?.email,
+          req
+        );
+
+        return res.json({ success: true, message: `Event "${event?.title || targetId}" successfully deleted.` });
       }
+
+      // Local fallback only if Supabase not configured
+      const target = db.events.find((e) => e.id === targetId || e.slug === targetId);
+      if (!target) {
+        return res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
+      }
+      db.events = db.events.filter((e) => e.id !== target.id && e.slug !== target.slug);
+      saveDatabase(db);
+      return res.json({ success: true, message: `Event "${target.title}" successfully deleted.` });
+    } catch (err: any) {
+      console.error('[Admin Delete Event Exception]:', err);
+      return res.status(500).json({ success: false, error: err.message || 'Unexpected server error deleting event.' });
     }
-    
-    // Also clean up registrations and checkins associated with this event
-    const relatedRegIds = new Set(db.registrations.filter((r) => r.event_id === target.id).map((r) => r.id));
-    db.registrations = db.registrations.filter((r) => r.event_id !== target.id);
-    db.checkins = db.checkins.filter((c) => c.event_id !== target.id && !relatedRegIds.has(c.registration_id));
-
-    saveDatabase(db);
-
-    logAdminAction(
-      'Event Deleted',
-      'Event',
-      target.id,
-      `Admin deleted event "${target.title}"`,
-      req.adminUser?.email,
-      req
-    );
-
-    res.json({ success: true, message: `Event "${target.title}" successfully deleted.` });
   });
 
   adminRouter.post('/events/:id/duplicate', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
-    const targetId = req.params.id;
-    let original = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    try {
+      const targetId = req.params.id;
+      let original = await findEventByIdOrSlug(targetId);
 
-    // If not in local memory, check Supabase
-    if (!original && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
-        if (data) {
-          original = data;
-        }
+      if (!original) {
+        return res.status(404).json({ error: 'Event to duplicate not found in database' });
       }
-    }
 
-    if (!original) {
-      res.status(404).json({ error: 'Event to duplicate not found' });
-      return;
-    }
+      const dupPayload: any = {
+        ...original,
+        title: `${original.title} (Copy)`,
+        slug: `${original.slug}-copy-${Date.now().toString().slice(-4)}`,
+        current_participants: 0,
+        winners: [],
+        results: null,
+      };
+      delete dupPayload.id;
+      delete dupPayload.created_at;
+      delete dupPayload.updated_at;
 
-    const duplicated: Event = {
-      ...original,
-      id: `evt-${Date.now()}`,
-      title: `${original.title} (Copy)`,
-      slug: `${original.slug}-copy-${Date.now().toString().slice(-4)}`,
-      current_participants: 0,
-      winners: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    // 1. Direct Supabase write
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      const client = getSupabaseClient();
-      if (client) {
-        try {
-          await client.from('events').upsert(duplicated);
-        } catch (err: any) {
-          console.error('[Supabase Event Duplicate Exception]:', err?.message);
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const { success, event, error } = await createEventInSupabase(dupPayload);
+        if (!success || !event) {
+          return res.status(500).json({ error: error || 'Failed to duplicate event in database.' });
         }
+        db.events.unshift(event);
+        saveDatabase(db);
+        return res.status(201).json(event);
       }
-    }
 
-    db.events.unshift(duplicated);
-    saveDatabase(db);
-    res.status(201).json(duplicated);
+      const duplicated = normalizeEvent(sanitizeEventPayload(dupPayload, false));
+      db.events.unshift(duplicated);
+      saveDatabase(db);
+      return res.status(201).json(duplicated);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Server error duplicating event' });
+    }
   });
 
   // Admin Announcements CRUD (SUPER_ADMIN, ADMIN, EDITOR)
   adminRouter.post('/announcements', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await createAnnouncementInSupabase(req.body);
+      if (!supaRes.success || !supaRes.announcement) {
+        return res.status(500).json({ error: supaRes.error || 'Failed to create announcement in Supabase database.' });
+      }
+      db.announcements.unshift(supaRes.announcement);
+      saveDatabase(db);
+      return res.status(201).json(supaRes.announcement);
+    }
+
     const body = req.body;
     const slug = body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const newAnn: Announcement = {
@@ -4680,104 +4708,162 @@ app.use(async (req, res, next) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
     db.announcements.unshift(newAnn);
     saveDatabase(db);
-
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      await upsertSupabaseRecord('announcements', newAnn);
-    }
-
     res.status(201).json(newAnn);
   });
 
   adminRouter.put('/announcements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
-    const index = db.announcements.findIndex((a) => a.id === req.params.id || a.slug === req.params.id);
+    const targetId = req.params.id;
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await updateAnnouncementInSupabase(targetId, req.body);
+      if (!supaRes.success || !supaRes.announcement) {
+        if (supaRes.notFound) {
+          return res.status(404).json({ error: 'Announcement not found' });
+        }
+        return res.status(500).json({ error: supaRes.error || 'Failed to update announcement in database' });
+      }
+      const existingIdx = db.announcements.findIndex((a) => a.id === targetId || a.slug === targetId);
+      if (existingIdx !== -1) {
+        db.announcements[existingIdx] = supaRes.announcement;
+      } else {
+        db.announcements.unshift(supaRes.announcement);
+      }
+      saveDatabase(db);
+      return res.json(supaRes.announcement);
+    }
+
+    const index = db.announcements.findIndex((a) => a.id === targetId || a.slug === targetId);
     if (index === -1) {
       res.status(404).json({ error: 'Announcement not found' });
       return;
     }
-    db.announcements[index] = {
+    const updated = {
       ...db.announcements[index],
       ...req.body,
       updated_at: new Date().toISOString(),
     };
+
+    db.announcements[index] = updated;
     saveDatabase(db);
-
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      await upsertSupabaseRecord('announcements', db.announcements[index]);
-    }
-
     res.json(db.announcements[index]);
   });
 
   adminRouter.delete('/announcements/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
     const targetId = req.params.id;
     const target = db.announcements.find((a) => a.id === targetId || a.slug === targetId);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
-      return;
-    }
-    const prevCount = db.announcements.length;
-    db.announcements = db.announcements.filter((a) => a.id !== target.id && a.slug !== target.id);
-    if (db.announcements.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
-      return;
-    }
-    saveDatabase(db);
+    const identifier = target ? target.id : targetId;
 
     if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      await deleteSupabaseRecord('announcements', target.id);
+      const delRes = await deleteAnnouncementFromSupabase(identifier);
+      if (!delRes.success) {
+        if (delRes.notFound && !target) {
+          return res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
+        }
+        if (!delRes.notFound) {
+          return res.status(500).json({ success: false, error: delRes.error || 'Failed to delete announcement from database' });
+        }
+      }
+    } else if (!target) {
+      res.status(404).json({ success: false, error: 'Announcement not found in database or already deleted.' });
+      return;
     }
+
+    const annTitle = target?.title || 'Announcement';
+    db.announcements = db.announcements.filter((a) => a.id !== targetId && a.slug !== targetId && (target ? a.id !== target.id : true));
+    saveDatabase(db);
 
     logAdminAction(
       'Announcement Deleted',
       'Announcement',
-      target.id,
-      `Admin deleted announcement "${target.title}"`,
+      targetId,
+      `Admin deleted announcement "${annTitle}"`,
       req.adminUser?.email,
       req
     );
 
-    res.json({ success: true, message: `Announcement "${target.title}" deleted successfully.` });
+    res.json({ success: true, message: `Announcement "${annTitle}" deleted successfully.` });
   });
 
   // Admin Join Applications Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.get(['/join-applications', '/applications'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.get(['/join-applications', '/applications'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client
+            .from('join_applications')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            db.join_applications = data;
+            return res.json(data);
+          }
+        } catch (err: any) {
+          console.warn('[Supabase join applications fetch warning]:', err?.message);
+        }
+      }
+    }
     res.json(Array.isArray(db.join_applications) ? db.join_applications : []);
   });
 
-  adminRouter.patch(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const app = (db.join_applications || []).find((a) => a.id === req.params.id);
+  adminRouter.patch(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    let app = (db.join_applications || []).find((a) => a.id === req.params.id);
+    if (!app && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('join_applications').select('*').eq('id', req.params.id).maybeSingle();
+        if (data) app = data as JoinApplication;
+      }
+    }
+
     if (!app) {
       res.status(404).json({ error: 'Application not found' });
       return;
     }
     if (req.body.status) app.status = req.body.status;
     if (req.body.reviewer_notes !== undefined) app.reviewer_notes = req.body.reviewer_notes;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('join_applications', app);
+    }
+
+    const localIdx = (db.join_applications || []).findIndex((a) => a.id === app!.id);
+    if (localIdx !== -1) {
+      db.join_applications[localIdx] = app;
+    } else {
+      db.join_applications.unshift(app);
+    }
     saveDatabase(db);
     res.json(app);
   });
 
-  adminRouter.delete(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  adminRouter.delete(['/join-applications/:id', '/applications/:id'], requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
     const targetId = req.params.id;
-    const target = (db.join_applications || []).find((a) => a.id === targetId);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
-      return;
+    let target = (db.join_applications || []).find((a) => a.id === targetId);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteSupabaseRecord('join_applications', targetId);
+      if (!supaRes.success && supaRes.deletedCount === 0 && !target) {
+        return res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
+        return;
+      }
     }
-    const prevCount = (db.join_applications || []).length;
-    db.join_applications = (db.join_applications || []).filter((a) => a.id !== target.id);
-    if (db.join_applications.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Application not found in database or already deleted.' });
-      return;
-    }
+
+    db.join_applications = (db.join_applications || []).filter((a) => a.id !== targetId);
     saveDatabase(db);
 
+    const applicantName = target ? target.full_name : 'applicant';
     logAdminAction(
       'Application Deleted',
       'JoinApplication',
-      target.id,
-      `Admin deleted recruitment application for ${target.full_name}`,
+      targetId,
+      `Admin deleted recruitment application for ${applicantName}`,
       req.adminUser?.email,
       req
     );
@@ -4877,7 +4963,7 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Team Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.post('/team', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.post('/team', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
     const body = req.body || {};
     const pos = (body.position || body.role || 'Member').trim();
     const photo = (body.photo_url || body.image_url || '').trim();
@@ -4909,6 +4995,19 @@ app.use(async (req, res, next) => {
       order: body.order !== undefined ? Number(body.order) : (db.team.length + 1),
       order_index: body.order_index !== undefined ? Number(body.order_index) : (body.order !== undefined ? Number(body.order) : (db.team.length + 1)),
     };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertTeamMemberInSupabase(newMember);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save team member to Supabase database.',
+        });
+      }
+      if (supaRes.member) {
+        Object.assign(newMember, supaRes.member);
+      }
+    }
+
     db.team.push(newMember);
     saveDatabase(db);
 
@@ -4924,21 +5023,31 @@ app.use(async (req, res, next) => {
     res.status(201).json(newMember);
   });
 
-  adminRouter.put('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.team.findIndex((t) => t.id === req.params.id);
-    if (index === -1) {
+  adminRouter.put('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    let index = db.team.findIndex((t) => t.id === req.params.id);
+    let existing = index !== -1 ? db.team[index] : null;
+
+    if (!existing && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('team').select('*').eq('id', req.params.id).maybeSingle();
+        if (data) existing = data as TeamMember;
+      }
+    }
+
+    if (!existing) {
       res.status(404).json({ error: 'Team member not found' });
       return;
     }
+
     const body = req.body || {};
-    const existing = db.team[index];
     const pos = (body.position || body.role || existing.position || existing.role || 'Member').trim();
     const photo = (body.photo_url !== undefined ? body.photo_url : (body.image_url !== undefined ? body.image_url : (existing.photo_url || existing.image_url || ''))).trim();
     const linkedin = (body.linkedin !== undefined ? body.linkedin : (body.social_links?.linkedin !== undefined ? body.social_links.linkedin : (existing.linkedin || existing.social_links?.linkedin || ''))).trim();
     const github = (body.github !== undefined ? body.github : (body.social_links?.github !== undefined ? body.social_links.github : (existing.github || existing.social_links?.github || ''))).trim();
     const email = (body.email !== undefined ? body.email : (body.social_links?.email !== undefined ? body.social_links.email : (existing.email || existing.social_links?.email || ''))).trim();
 
-    db.team[index] = {
+    const updatedMember: TeamMember = {
       ...existing,
       ...body,
       id: existing.id,
@@ -4965,48 +5074,77 @@ app.use(async (req, res, next) => {
       order: body.order !== undefined ? Number(body.order) : existing.order,
       order_index: body.order_index !== undefined ? Number(body.order_index) : existing.order_index,
     };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertTeamMemberInSupabase(updatedMember);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to update team member in Supabase database.',
+        });
+      }
+      if (supaRes.member) {
+        Object.assign(updatedMember, supaRes.member);
+      }
+    }
+
+    if (index !== -1) {
+      db.team[index] = updatedMember;
+    } else {
+      db.team.push(updatedMember);
+    }
     saveDatabase(db);
 
     logAdminAction(
       'Team Member Updated',
       'TeamMember',
       existing.id,
-      `Admin updated team member ${db.team[index].name} (${db.team[index].position})`,
+      `Admin updated team member ${updatedMember.name} (${updatedMember.position})`,
       (req as AuthenticatedRequest).adminUser?.email,
       req
     );
 
-    res.json(db.team[index]);
+    res.json(updatedMember);
   });
 
-  adminRouter.delete('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
-    const target = db.team.find((t) => t.id === req.params.id);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
-      return;
+  adminRouter.delete('/team/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let target = db.team.find((t) => t.id === targetId);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteTeamMemberFromSupabase(targetId);
+      if (!supaRes.success) {
+        if (supaRes.notFound && !target) {
+          return res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
+        }
+        if (!supaRes.notFound) {
+          return res.status(500).json({ success: false, error: supaRes.error || 'Failed to delete team member from Supabase database.' });
+        }
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
+        return;
+      }
     }
-    const prevCount = db.team.length;
-    db.team = db.team.filter((t) => t.id !== target.id);
-    if (db.team.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Team member not found in database or already deleted.' });
-      return;
-    }
+
+    db.team = db.team.filter((t) => t.id !== targetId);
     saveDatabase(db);
 
+    const memberName = target ? target.name : 'Team member';
     logAdminAction(
       'Team Member Deleted',
       'TeamMember',
-      target.id,
-      `Admin removed team member ${target.name} (${target.position || target.role})`,
+      targetId,
+      `Admin removed team member ${memberName}`,
       (req as AuthenticatedRequest).adminUser?.email,
       req
     );
 
-    res.json({ success: true, message: `Team member ${target.name} removed from roster.` });
+    res.json({ success: true, message: `Team member removed from roster.` });
   });
 
   // Admin Projects Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.post('/projects', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.post('/projects', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
     const projTitle = (req.body.title || req.body.name || 'project').toString();
     const slug = req.body.slug || projTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const newProj: Project = {
@@ -5015,42 +5153,105 @@ app.use(async (req, res, next) => {
       slug,
       date: req.body.date || new Date().toISOString().slice(0, 7),
     };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertProjectInSupabase(newProj);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save project to Supabase database.',
+        });
+      }
+      if (supaRes.project) {
+        Object.assign(newProj, supaRes.project);
+      }
+    }
+
     db.projects.unshift(newProj);
     saveDatabase(db);
     res.status(201).json(newProj);
   });
 
-  adminRouter.put('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.projects.findIndex((p) => p.id === req.params.id || p.slug === req.params.id);
-    if (index === -1) {
+  adminRouter.put('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    const targetId = req.params.id;
+    let index = db.projects.findIndex((p) => p.id === targetId || p.slug === targetId);
+    let existing = index !== -1 ? db.projects[index] : null;
+
+    if (!existing && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client
+          .from('projects')
+          .select('*')
+          .or(`id.eq.${targetId},slug.eq.${targetId}`)
+          .maybeSingle();
+        if (data) existing = data as Project;
+      }
+    }
+
+    if (!existing) {
       res.status(404).json({ error: 'Project not found' });
       return;
     }
-    db.projects[index] = { ...db.projects[index], ...req.body };
+
+    const updatedProj: Project = {
+      ...existing,
+      ...req.body,
+      id: existing.id,
+      slug: req.body.slug || existing.slug,
+    };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertProjectInSupabase(updatedProj);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to update project in Supabase database.',
+        });
+      }
+      if (supaRes.project) {
+        Object.assign(updatedProj, supaRes.project);
+      }
+    }
+
+    if (index !== -1) {
+      db.projects[index] = updatedProj;
+    } else {
+      db.projects.unshift(updatedProj);
+    }
     saveDatabase(db);
-    res.json(db.projects[index]);
+    res.json(updatedProj);
   });
 
-  adminRouter.delete('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
+  adminRouter.delete('/projects/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
     const targetId = req.params.id;
-    const target = db.projects.find((p) => p.id === targetId || p.slug === targetId);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
-      return;
+    let target = db.projects.find((p) => p.id === targetId || p.slug === targetId);
+    const identifier = target ? target.id : targetId;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteProjectFromSupabase(identifier);
+      if (!supaRes.success) {
+        if (supaRes.notFound && !target) {
+          return res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
+        }
+        if (!supaRes.notFound) {
+          return res.status(500).json({ success: false, error: supaRes.error || 'Failed to delete project from Supabase database.' });
+        }
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
+        return;
+      }
     }
-    const prevCount = db.projects.length;
-    db.projects = db.projects.filter((p) => p.id !== target.id && p.slug !== target.id);
-    if (db.projects.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Project not found in database or already deleted.' });
-      return;
-    }
+
+    const canonicalId = target ? target.id : targetId;
+    db.projects = db.projects.filter((p) => p.id !== canonicalId && p.slug !== targetId && (target ? p.slug !== target.slug : true));
     saveDatabase(db);
 
-    const projName = (target as any).title || target.name || 'Project';
+    const projName = target ? ((target as any).title || target.name || 'Project') : 'Project';
     logAdminAction(
       'Project Deleted',
       'Project',
-      target.id,
+      canonicalId,
       `Admin deleted project "${projName}"`,
       req.adminUser?.email,
       req
@@ -5060,46 +5261,104 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Gallery Management (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.post('/gallery', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
+  adminRouter.post('/gallery', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
     const newGal: GalleryImage = {
       ...req.body,
       id: `gal-${Date.now()}`,
     };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertGalleryItemInSupabase(newGal);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save gallery item to Supabase database.',
+        });
+      }
+      if (supaRes.gallery) {
+        Object.assign(newGal, supaRes.gallery);
+      }
+    }
+
     db.gallery.unshift(newGal);
     saveDatabase(db);
     res.status(201).json(newGal);
   });
 
-  adminRouter.put('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const index = db.gallery.findIndex((g) => g.id === req.params.id);
-    if (index === -1) {
+  adminRouter.put('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req, res) => {
+    const targetId = req.params.id;
+    let index = db.gallery.findIndex((g) => g.id === targetId);
+    let existing = index !== -1 ? db.gallery[index] : null;
+
+    if (!existing && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('gallery').select('*').eq('id', targetId).maybeSingle();
+        if (data) existing = data as GalleryImage;
+      }
+    }
+
+    if (!existing) {
       res.status(404).json({ error: 'Gallery item not found' });
       return;
     }
-    db.gallery[index] = { ...db.gallery[index], ...req.body };
+
+    const updatedGal: GalleryImage = {
+      ...existing,
+      ...req.body,
+      id: existing.id,
+    };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertGalleryItemInSupabase(updatedGal);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to update gallery item in Supabase database.',
+        });
+      }
+      if (supaRes.gallery) {
+        Object.assign(updatedGal, supaRes.gallery);
+      }
+    }
+
+    if (index !== -1) {
+      db.gallery[index] = updatedGal;
+    } else {
+      db.gallery.unshift(updatedGal);
+    }
     saveDatabase(db);
-    res.json(db.gallery[index]);
+    res.json(updatedGal);
   });
 
-  adminRouter.delete('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res: Response) => {
-    const target = db.gallery.find((g) => g.id === req.params.id);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
-      return;
+  adminRouter.delete('/gallery/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let target = db.gallery.find((g) => g.id === targetId);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteGalleryItemFromSupabase(targetId);
+      if (!supaRes.success) {
+        if (supaRes.notFound && !target) {
+          return res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
+        }
+        if (!supaRes.notFound) {
+          return res.status(500).json({ success: false, error: supaRes.error || 'Failed to delete gallery item from Supabase database.' });
+        }
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
+        return;
+      }
     }
-    const prevCount = db.gallery.length;
-    db.gallery = db.gallery.filter((g) => g.id !== target.id);
-    if (db.gallery.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Gallery photo not found in database or already deleted.' });
-      return;
-    }
+
+    db.gallery = db.gallery.filter((g) => g.id !== targetId);
     saveDatabase(db);
 
+    const title = target ? target.title : 'Gallery item';
     logAdminAction(
       'Gallery Item Deleted',
       'GalleryImage',
-      target.id,
-      `Admin deleted gallery photo "${target.title}"`,
+      targetId,
+      `Admin deleted gallery photo "${title}"`,
       req.adminUser?.email,
       req
     );
@@ -5108,41 +5367,83 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Messages Management (SUPER_ADMIN, ADMIN)
-  adminRouter.get('/messages', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.get('/messages', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client
+            .from('messages')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            db.messages = data;
+            return res.json(data);
+          }
+        } catch (err: any) {
+          console.warn('[Supabase messages fetch warning]:', err?.message);
+        }
+      }
+    }
     res.json(db.messages);
   });
 
-  adminRouter.patch('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    const msg = db.messages.find((m) => m.id === req.params.id);
+  adminRouter.patch('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    let msg = db.messages.find((m) => m.id === req.params.id);
+    if (!msg && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('messages').select('*').eq('id', req.params.id).maybeSingle();
+        if (data) msg = data as ContactMessage;
+      }
+    }
+
     if (!msg) {
       res.status(404).json({ error: 'Message not found' });
       return;
     }
     if (typeof req.body.is_read === 'boolean') msg.is_read = req.body.is_read;
     if (typeof req.body.responded === 'boolean') msg.responded = req.body.responded;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('messages', msg);
+    }
+
+    const localIdx = db.messages.findIndex((m) => m.id === msg!.id);
+    if (localIdx !== -1) {
+      db.messages[localIdx] = msg;
+    } else {
+      db.messages.unshift(msg);
+    }
     saveDatabase(db);
     res.json(msg);
   });
 
-  adminRouter.delete('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-    const target = db.messages.find((m) => m.id === req.params.id);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
-      return;
+  adminRouter.delete('/messages/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let target = db.messages.find((m) => m.id === targetId);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteSupabaseRecord('messages', targetId);
+      if (!supaRes.success && supaRes.deletedCount === 0 && !target) {
+        return res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
+        return;
+      }
     }
-    const prevCount = db.messages.length;
-    db.messages = db.messages.filter((m) => m.id !== target.id);
-    if (db.messages.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Message not found in database or already deleted.' });
-      return;
-    }
+
+    db.messages = db.messages.filter((m) => m.id !== targetId);
     saveDatabase(db);
 
+    const senderName = target ? `${target.name} (${target.email})` : targetId;
     logAdminAction(
       'Message Deleted',
       'ContactMessage',
-      target.id,
-      `Admin deleted message from ${target.name} (${target.email})`,
+      targetId,
+      `Admin deleted message from ${senderName}`,
       req.adminUser?.email,
       req
     );
@@ -5151,21 +5452,37 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Stats & Settings Update
-  adminRouter.get('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    const list = [...(db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS)].sort(
-      (a, b) => (a.order || 0) - (b.order || 0)
-    );
-    res.json(list);
+  adminRouter.get('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    let list = db.community_impact_stats || INITIAL_COMMUNITY_IMPACT_STATS;
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaImpact = await getCommunityImpactStatsFromSupabase();
+      if (supaImpact && supaImpact.length > 0) {
+        list = supaImpact;
+        db.community_impact_stats = supaImpact;
+      }
+    }
+    const sorted = [...list].sort((a, b) => (a.order || 0) - (b.order || 0));
+    res.json(sorted);
   });
 
-  adminRouter.put('/community-impact/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.put('/community-impact/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
     const id = req.params.id;
     const { value, label, icon, active, order } = req.body;
     if (!db.community_impact_stats) {
       db.community_impact_stats = [...INITIAL_COMMUNITY_IMPACT_STATS];
     }
-    const idx = db.community_impact_stats.findIndex((s) => s.id === id);
-    if (idx === -1) {
+    let idx = db.community_impact_stats.findIndex((s) => s.id === id);
+    let existing = idx !== -1 ? db.community_impact_stats[idx] : null;
+
+    if (!existing && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('community_impact_stats').select('*').eq('id', id).maybeSingle();
+        if (data) existing = data as CommunityImpactStat;
+      }
+    }
+
+    if (!existing) {
       res.status(404).json({ error: 'Community impact statistic not found' });
       return;
     }
@@ -5183,17 +5500,34 @@ app.use(async (req, res, next) => {
       return;
     }
 
-    db.community_impact_stats[idx] = {
-      ...db.community_impact_stats[idx],
+    const updatedStat: CommunityImpactStat = {
+      ...existing,
       value: cleanValue,
       label: cleanLabel,
       icon: cleanIcon || 'Users',
       active: typeof active === 'boolean' ? active : true,
-      order: typeof order === 'number' ? order : db.community_impact_stats[idx].order,
+      order: typeof order === 'number' ? order : existing.order,
       updated_at: new Date().toISOString(),
       updated_by: req.adminUser?.name || req.adminUser?.email || 'Administrator',
     };
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertCommunityImpactStatInSupabase(updatedStat);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to update community impact statistic in Supabase database.',
+        });
+      }
+      if (supaRes.stat) {
+        Object.assign(updatedStat, supaRes.stat);
+      }
+    }
+
+    if (idx !== -1) {
+      db.community_impact_stats[idx] = updatedStat;
+    } else {
+      db.community_impact_stats.push(updatedStat);
+    }
     saveDatabase(db);
 
     logAdminAction(
@@ -5205,17 +5539,17 @@ app.use(async (req, res, next) => {
       req
     );
 
-    res.json(db.community_impact_stats[idx]);
+    res.json(updatedStat);
   });
 
-  adminRouter.put('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.put('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
     const statsArray = req.body;
     if (!Array.isArray(statsArray)) {
       res.status(400).json({ error: 'Expected an array of community impact stats.' });
       return;
     }
 
-    const sanitized = statsArray.map((item, idx) => {
+    const sanitized: CommunityImpactStat[] = statsArray.map((item, idx) => {
       const cleanValue = typeof item.value === 'string' ? item.value.replace(/<[^>]*>?/gm, '').trim() : String(item.value || '').trim();
       const cleanLabel = typeof item.label === 'string' ? item.label.replace(/<[^>]*>?/gm, '').trim() : String(item.label || '').trim();
       const cleanIcon = typeof item.icon === 'string' ? item.icon.replace(/[^a-zA-Z0-9_-]/g, '').trim() : 'Users';
@@ -5231,7 +5565,22 @@ app.use(async (req, res, next) => {
       };
     });
 
-    db.community_impact_stats = sanitized;
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await saveAllCommunityImpactStatsInSupabase(sanitized);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save community impact statistics in Supabase database.',
+        });
+      }
+      if (supaRes.stats) {
+        db.community_impact_stats = supaRes.stats;
+      } else {
+        db.community_impact_stats = sanitized;
+      }
+    } else {
+      db.community_impact_stats = sanitized;
+    }
+
     saveDatabase(db);
 
     logAdminAction(
@@ -5246,7 +5595,7 @@ app.use(async (req, res, next) => {
     res.json(db.community_impact_stats);
   });
 
-  adminRouter.post('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.post('/community-impact', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
     const { value, label, icon, active, order } = req.body;
     if (!db.community_impact_stats) {
       db.community_impact_stats = [...INITIAL_COMMUNITY_IMPACT_STATS];
@@ -5272,6 +5621,18 @@ app.use(async (req, res, next) => {
       updated_by: req.adminUser?.name || req.adminUser?.email || 'Administrator',
     };
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertCommunityImpactStatInSupabase(newStat);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save community impact statistic in Supabase database.',
+        });
+      }
+      if (supaRes.stat) {
+        Object.assign(newStat, supaRes.stat);
+      }
+    }
+
     db.community_impact_stats.push(newStat);
     saveDatabase(db);
 
@@ -5287,24 +5648,39 @@ app.use(async (req, res, next) => {
     res.status(201).json(newStat);
   });
 
-  adminRouter.delete('/community-impact/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.delete('/community-impact/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res) => {
     const id = req.params.id;
     if (!db.community_impact_stats) {
       db.community_impact_stats = [...INITIAL_COMMUNITY_IMPACT_STATS];
     }
     const idx = db.community_impact_stats.findIndex((s) => s.id === id);
-    if (idx === -1) {
-      res.status(404).json({ error: 'Statistic not found.' });
-      return;
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await deleteCommunityImpactStatFromSupabase(id);
+      if (!supaRes.success) {
+        if (supaRes.notFound && idx === -1) {
+          return res.status(404).json({ error: 'Statistic not found.' });
+        }
+        if (!supaRes.notFound) {
+          return res.status(500).json({ error: supaRes.error || 'Failed to delete statistic from Supabase database.' });
+        }
+      }
+    } else {
+      if (idx === -1) {
+        res.status(404).json({ error: 'Statistic not found.' });
+        return;
+      }
     }
-    const deleted = db.community_impact_stats.splice(idx, 1)[0];
+
+    const deleted = idx !== -1 ? db.community_impact_stats.splice(idx, 1)[0] : null;
     saveDatabase(db);
 
+    const statLabel = deleted ? deleted.label : id;
     logAdminAction(
       'Delete Community Impact Stat',
       'CommunityImpactStat',
       id,
-      `Deleted stat ${deleted.label}`,
+      `Deleted stat ${statLabel}`,
       req.adminUser?.email,
       req
     );
@@ -5313,13 +5689,27 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Legacy Stats & Settings Update
-  adminRouter.put('/stats', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    db.stats = { ...db.stats, ...req.body };
+  adminRouter.put('/stats', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    const updatedStats = { ...db.stats, ...req.body };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await saveStatsInSupabase(updatedStats);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save stats to Supabase database.',
+        });
+      }
+      if (supaRes.stats) {
+        Object.assign(updatedStats, supaRes.stats);
+      }
+    }
+
+    db.stats = updatedStats;
     saveDatabase(db);
     res.json(db.stats);
   });
 
-  adminRouter.put('/settings', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.put('/settings', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
     const updatedSettings = { ...db.settings, ...req.body };
     if (req.body.join_us_status !== undefined) {
       updatedSettings.is_recruitment_open = !!req.body.join_us_status;
@@ -5331,6 +5721,19 @@ app.use(async (req, res, next) => {
     if (req.body.automated_email_enabled !== undefined) {
       updatedSettings.automated_email_enabled = !!req.body.automated_email_enabled;
     }
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await saveSettingsInSupabase(updatedSettings);
+      if (!supaRes.success) {
+        return res.status(500).json({
+          error: supaRes.error || 'Failed to save settings to Supabase database.',
+        });
+      }
+      if (supaRes.settings) {
+        Object.assign(updatedSettings, supaRes.settings);
+      }
+    }
+
     db.settings = updatedSettings;
     saveDatabase(db);
     res.json(db.settings);
@@ -5527,11 +5930,28 @@ app.use(async (req, res, next) => {
   // ==========================================
   // ADMIN CERTIFICATES MANAGEMENT (SUPER_ADMIN, ADMIN)
   // ==========================================
-  adminRouter.get('/certificates', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.get('/certificates', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client
+            .from('certificates')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            db.certificates = data;
+            return res.json(data);
+          }
+        } catch (err: any) {
+          console.warn('[Supabase certificates fetch warning]:', err?.message);
+        }
+      }
+    }
     res.json(db.certificates);
   });
 
-  adminRouter.post('/certificates', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.post('/certificates', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
     const body = req.body;
     const certCode = body.certificate_code || body.certificate_id || body.code || `IZ-2026-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -5554,12 +5974,19 @@ app.use(async (req, res, next) => {
       created_at: new Date().toISOString(),
     };
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertSupabaseRecord('certificates', newCert);
+      if (!supaRes.success) {
+        return res.status(500).json({ error: supaRes.error || 'Failed to save certificate to Supabase database.' });
+      }
+    }
+
     db.certificates.unshift(newCert);
     saveDatabase(db);
     res.status(201).json(newCert);
   });
 
-  adminRouter.post('/certificates/batch', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
+  adminRouter.post('/certificates/batch', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
     const { event_id, event_title, certificate_type, issue_date, issued_by, designation, students } = req.body;
 
     if (!Array.isArray(students) || students.length === 0) {
@@ -5588,8 +6015,21 @@ app.use(async (req, res, next) => {
         notes: student.notes || 'Awarded for active participation and project completion.',
         created_at: new Date().toISOString(),
       };
-      db.certificates.unshift(cert);
       created.push(cert);
+    }
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { error } = await client.from('certificates').upsert(created);
+        if (error) {
+          return res.status(500).json({ error: error.message || 'Failed to save batch certificates to Supabase.' });
+        }
+      }
+    }
+
+    for (const cert of created) {
+      db.certificates.unshift(cert);
     }
 
     saveDatabase(db);
@@ -5600,41 +6040,79 @@ app.use(async (req, res, next) => {
     });
   });
 
-  adminRouter.put('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req, res) => {
-    const index = db.certificates.findIndex((c) => c.id === req.params.id);
-    if (index === -1) {
+  adminRouter.put('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req, res) => {
+    const targetId = req.params.id;
+    let index = db.certificates.findIndex((c) => c.id === targetId || c.certificate_code === targetId);
+    let existing = index !== -1 ? db.certificates[index] : null;
+
+    if (!existing && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('certificates').select('*').or(`id.eq.${targetId},certificate_code.eq.${targetId}`).maybeSingle();
+        if (data) existing = data as Certificate;
+      }
+    }
+
+    if (!existing) {
       res.status(404).json({ error: 'Certificate not found' });
       return;
     }
-    db.certificates[index] = { ...db.certificates[index], ...req.body };
+
+    const updatedCert: Certificate = {
+      ...existing,
+      ...req.body,
+      id: existing.id,
+      certificate_code: req.body.certificate_code || existing.certificate_code,
+    };
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const supaRes = await upsertSupabaseRecord('certificates', updatedCert);
+      if (!supaRes.success) {
+        return res.status(500).json({ error: supaRes.error || 'Failed to update certificate in Supabase database.' });
+      }
+    }
+
+    if (index !== -1) {
+      db.certificates[index] = updatedCert;
+    } else {
+      db.certificates.unshift(updatedCert);
+    }
     saveDatabase(db);
-    res.json(db.certificates[index]);
+    res.json(updatedCert);
   });
 
-  adminRouter.delete('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-    const target = db.certificates.find((c) => c.id === req.params.id || c.certificate_code === req.params.id);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
-      return;
+  adminRouter.delete('/certificates/:id', requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let target = db.certificates.find((c) => c.id === targetId || c.certificate_code === targetId);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const canonicalId = target ? target.id : targetId;
+      const supaRes = await deleteSupabaseRecord('certificates', canonicalId);
+      if (!supaRes.success && supaRes.deletedCount === 0 && !target) {
+        return res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
+      }
+    } else {
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
+        return;
+      }
     }
-    const prevCount = db.certificates.length;
-    db.certificates = db.certificates.filter((c) => c.id !== target.id && c.certificate_code !== target.certificate_code);
-    if (db.certificates.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Certificate not found in database or already revoked.' });
-      return;
-    }
+
+    const canonicalId = target ? target.id : targetId;
+    db.certificates = db.certificates.filter((c) => c.id !== canonicalId && c.certificate_code !== targetId);
     saveDatabase(db);
 
+    const studentInfo = target ? `${target.certificate_code} issued to ${target.student_name}` : targetId;
     logAdminAction(
       'Certificate Revoked & Deleted',
       'Certificate',
-      target.id,
-      `Admin revoked certificate ${target.certificate_code} issued to ${target.student_name}`,
+      canonicalId,
+      `Admin revoked certificate ${studentInfo}`,
       req.adminUser?.email,
       req
     );
 
-    res.json({ success: true, message: `Certificate ${target.certificate_code} revoked and deleted.` });
+    res.json({ success: true, message: 'Certificate revoked and removed.' });
   });
 
   // ==========================================

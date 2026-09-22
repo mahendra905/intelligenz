@@ -442,6 +442,9 @@ async function runAcceptanceTests() {
       method: 'DELETE',
       headers: authHeaders,
     });
+    if (deleteTeamRes.status !== 200) {
+      console.log('DEBUG deleteTeamRes:', deleteTeamRes.status, deleteTeamRes.data);
+    }
 
     const postDeleteTeamRes = await request('/api/team');
     const goneTeam = !postDeleteTeamRes.data?.some((m: any) => m.id === testTeamId);
@@ -491,10 +494,13 @@ async function runAcceptanceTests() {
     const updateVerified = foundAnn?.title === 'MOCK_TEST_2026 UPDATED Announcement Title';
 
     // Delete
-    await request(`/api/admin/announcements/${testAnnId}`, {
+    const deleteAnnRes = await request(`/api/admin/announcements/${testAnnId}`, {
       method: 'DELETE',
       headers: authHeaders,
     });
+    if (deleteAnnRes.status !== 200) {
+      console.log('DEBUG deleteAnnRes:', deleteAnnRes.status, deleteAnnRes.data);
+    }
 
     const postDeleteAnnRes = await request('/api/announcements');
     const goneAnn = !postDeleteAnnRes.data?.some((a: any) => a.id === testAnnId);
@@ -763,10 +769,22 @@ async function runAcceptanceTests() {
       request('/api/projects'),
     ]);
 
-    const hasMockEvents = (events.data || []).some((e: any) => String(e.id || '').includes('MOCK_TEST_2026') || String(e.title || '').includes('MOCK_TEST_2026'));
-    const hasMockTeam = (team.data || []).some((t: any) => String(t.id || '').includes('MOCK_TEST_2026') || String(t.name || '').includes('MOCK_TEST_2026'));
-    const hasMockAnn = (announcements.data || []).some((a: any) => String(a.id || '').includes('MOCK_TEST_2026') || String(a.title || '').includes('MOCK_TEST_2026'));
-    const hasMockProj = (projects.data || []).some((p: any) => String(p.id || '').includes('MOCK_TEST_2026') || String(p.title || '').includes('MOCK_TEST_2026'));
+    const mockEventsList = (events.data || []).filter((e: any) => String(e.id || '').includes('MOCK_TEST_2026') || String(e.title || '').includes('MOCK_TEST_2026'));
+    const mockTeamList = (team.data || []).filter((t: any) => String(t.id || '').includes('MOCK_TEST_2026') || String(t.name || '').includes('MOCK_TEST_2026'));
+    const mockAnnList = (announcements.data || []).filter((a: any) => String(a.id || '').includes('MOCK_TEST_2026') || String(a.title || '').includes('MOCK_TEST_2026'));
+    const mockProjList = (projects.data || []).filter((p: any) => String(p.id || '').includes('MOCK_TEST_2026') || String(p.title || '').includes('MOCK_TEST_2026'));
+
+    if (mockAnnList.length > 0) {
+      console.log('DEBUG mockAnnList remaining:', mockAnnList);
+    }
+    if (mockTeamList.length > 0) {
+      console.log('DEBUG mockTeamList remaining:', mockTeamList);
+    }
+
+    const hasMockEvents = mockEventsList.length > 0;
+    const hasMockTeam = mockTeamList.length > 0;
+    const hasMockAnn = mockAnnList.length > 0;
+    const hasMockProj = mockProjList.length > 0;
 
     const clean = !hasMockEvents && !hasMockTeam && !hasMockAnn && !hasMockProj;
 
