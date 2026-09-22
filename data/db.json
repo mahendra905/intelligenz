@@ -558,6 +558,60 @@
   ],
   "projects": [
     {
+      "id": "proj-campusgpt",
+      "title": "CampusGPT: College Knowledge Engine & Student Copilot",
+      "name": "CampusGPT: College Knowledge Engine & Student Copilot",
+      "slug": "campusgpt-rag-student-assistant",
+      "description": "Retrieval-augmented conversational agent indexed on syllabi, academic calendars, timetables, and college regulations.",
+      "short_description": "RAG-based campus assistant answering student queries in real time.",
+      "category": "Generative AI",
+      "tech_stack": [
+        "LangChain",
+        "Gemini 1.5 Pro",
+        "ChromaDB",
+        "TypeScript",
+        "Tailwind CSS"
+      ],
+      "technologies": [],
+      "team_members": [
+        "K. V. Sai Kiran",
+        "B. Divya Sri"
+      ],
+      "github_url": "https://github.com/intelligenz-drkvsrit",
+      "demo_url": "https://intelligenz.drkvsrit.ac.in",
+      "image_url": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
+      "featured": true,
+      "status": "Completed",
+      "date": "2026-06"
+    },
+    {
+      "id": "proj-medvision",
+      "title": "MedVision: Automated Chest X-Ray Pathology Screener",
+      "name": "MedVision: Automated Chest X-Ray Pathology Screener",
+      "slug": "medvision-chest-xray-ai-diagnostics",
+      "description": "Deep learning diagnostic assistant classifying 14 common thoracic conditions with Grad-CAM visual heatmaps.",
+      "short_description": "Clinical radiologist assistant with localized pathology heatmaps.",
+      "category": "Healthcare AI",
+      "tech_stack": [
+        "PyTorch",
+        "TorchXRayVision",
+        "FastAPI",
+        "Next.js",
+        "Docker"
+      ],
+      "technologies": [],
+      "team_members": [
+        "Ananya Sharma",
+        "Rahul Varma"
+      ],
+      "github_url": "https://github.com/intelligenz-drkvsrit",
+      "demo_url": "https://intelligenz.drkvsrit.ac.in",
+      "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
+      "featured": true,
+      "status": "Completed",
+      "date": "2026-07"
+    },
+    {
       "id": "proj-smart-attendance",
       "title": "Facial Recognition & QR Smart Attendance Terminal",
       "name": "Facial Recognition & QR Smart Attendance Terminal",
@@ -638,60 +692,6 @@
       "featured": true,
       "status": "Active Development",
       "date": "2026-08"
-    },
-    {
-      "id": "proj-medvision",
-      "title": "MedVision: Automated Chest X-Ray Pathology Screener",
-      "name": "MedVision: Automated Chest X-Ray Pathology Screener",
-      "slug": "medvision-chest-xray-ai-diagnostics",
-      "description": "Deep learning diagnostic assistant classifying 14 common thoracic conditions with Grad-CAM visual heatmaps.",
-      "short_description": "Clinical radiologist assistant with localized pathology heatmaps.",
-      "category": "Healthcare AI",
-      "tech_stack": [
-        "PyTorch",
-        "TorchXRayVision",
-        "FastAPI",
-        "Next.js",
-        "Docker"
-      ],
-      "technologies": [],
-      "team_members": [
-        "Ananya Sharma",
-        "Rahul Varma"
-      ],
-      "github_url": "https://github.com/intelligenz-drkvsrit",
-      "demo_url": "https://intelligenz.drkvsrit.ac.in",
-      "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
-      "featured": true,
-      "status": "Completed",
-      "date": "2026-07"
-    },
-    {
-      "id": "proj-campusgpt",
-      "title": "CampusGPT: College Knowledge Engine & Student Copilot",
-      "name": "CampusGPT: College Knowledge Engine & Student Copilot",
-      "slug": "campusgpt-rag-student-assistant",
-      "description": "Retrieval-augmented conversational agent indexed on syllabi, academic calendars, timetables, and college regulations.",
-      "short_description": "RAG-based campus assistant answering student queries in real time.",
-      "category": "Generative AI",
-      "tech_stack": [
-        "LangChain",
-        "Gemini 1.5 Pro",
-        "ChromaDB",
-        "TypeScript",
-        "Tailwind CSS"
-      ],
-      "technologies": [],
-      "team_members": [
-        "K. V. Sai Kiran",
-        "B. Divya Sri"
-      ],
-      "github_url": "https://github.com/intelligenz-drkvsrit",
-      "demo_url": "https://intelligenz.drkvsrit.ac.in",
-      "image_url": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
-      "featured": true,
-      "status": "Completed",
-      "date": "2026-06"
     }
   ],
   "gallery": [
@@ -900,8 +900,8 @@
       "status": "ACTIVE",
       "must_change_password": false,
       "created_at": "2026-09-22T08:01:57.531618+00:00",
-      "updated_at": "2026-09-22T08:47:27.463Z",
-      "last_login_at": "2026-09-22T08:47:27.463Z",
+      "updated_at": "2026-09-22T09:15:46.350Z",
+      "last_login_at": "2026-09-22T09:15:46.350Z",
       "created_by": "System"
     }
   ],
@@ -1046,6 +1046,86 @@
   "newsletter_broadcasts": [],
   "checkins": [],
   "audit_logs": [
+    {
+      "id": "log-1790068548922-r8gey",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068546834",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"LIVE SYNC VERIFICATION EVENT (UPDATED)\"",
+      "timestamp": "2026-09-22T09:15:48.922Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068548065-a57kq",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068546834",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"LIVE SYNC VERIFICATION EVENT (UPDATED)\" (Status: Upcoming, Type: SOLO)",
+      "timestamp": "2026-09-22T09:15:48.065Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068547010-itnlp",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068546834",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"LIVE SYNC VERIFICATION EVENT\" (SOLO participation)",
+      "timestamp": "2026-09-22T09:15:47.010Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068546609-q4v09",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-22T09:15:46.609Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068438305-ef8nv",
+      "action": "Event Deleted",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068436516",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Admin deleted event \"SYNC_TEST_EVENT_2026_UPDATED\"",
+      "timestamp": "2026-09-22T09:13:58.305Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068437716-bfm6h",
+      "action": "Event Updated",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068436516",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Updated event \"SYNC_TEST_EVENT_2026_UPDATED\" (Status: Upcoming, Type: SOLO)",
+      "timestamp": "2026-09-22T09:13:57.716Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068436711-bmw44",
+      "action": "Event Created",
+      "entity_type": "Event",
+      "entity_id": "evt-1790068436516",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Created event \"SYNC_TEST_EVENT_2026\" (SOLO participation)",
+      "timestamp": "2026-09-22T09:13:56.711Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790068436288-02f63",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-22T09:13:56.288Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1790066847498-pciho",
       "action": "Admin Logout",

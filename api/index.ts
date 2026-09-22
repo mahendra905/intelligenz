@@ -1358,7 +1358,7 @@ async function ensureSupabaseHydrated(force = false): Promise<void> {
   try {
     const supabaseData = await loadStateFromSupabase();
     if (supabaseData) {
-      if (Array.isArray(supabaseData.events) && supabaseData.events.length > 0) {
+      if (Array.isArray(supabaseData.events)) {
         db.events = supabaseData.events;
       }
       if (Array.isArray(supabaseData.admin_users) && supabaseData.admin_users.length > 0) {
@@ -1480,13 +1480,13 @@ export async function findEventByIdOrSlug(identifier: string): Promise<Event | n
         }
 
         // Try case-insensitive slug query as extra resilience
-        const { data: bySlugIlike } = await client
+        const { data: bySlugIlike, error: errIlike } = await client
           .from('events')
           .select('*')
           .ilike('slug', cleanId)
           .maybeSingle();
 
-        if (bySlugIlike) {
+        if (bySlugIlike && !errIlike) {
           const pType = bySlugIlike.participation_type || 'SOLO';
           const normalized: Event = {
             ...bySlugIlike,
@@ -1495,6 +1495,14 @@ export async function findEventByIdOrSlug(identifier: string): Promise<Event | n
             max_team_size: bySlugIlike.max_team_size || (pType === 'SOLO' ? 1 : pType === 'DUO' ? 2 : 4),
           };
           return normalized;
+        }
+
+        if (!errId && !errSlug && !errIlike) {
+          // Event definitely does not exist in Supabase (e.g. deleted by admin); purge stale copy
+          db.events = db.events.filter(
+            (e) => e.id !== cleanId && e.slug !== cleanId && e.slug?.toLowerCase() !== cleanId.toLowerCase()
+          );
+          return null;
         }
       } catch (err: any) {
         console.warn('[Supabase Event Lookup Warning]:', err?.message);
@@ -2496,6 +2504,7 @@ app.use(async (req, res, next) => {
 
   // EVENTS (Public)
   app.get('/api/events', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const category = req.query.category as string;
     const status = req.query.status as string;
     const featured = req.query.featured === 'true';
@@ -2511,7 +2520,7 @@ app.use(async (req, res, next) => {
             .select('*')
             .order('date', { ascending: false });
 
-          if (!error && Array.isArray(data) && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             eventsList = data.map((evt: any) => {
               const pType = evt.participation_type || 'SOLO';
               return {
@@ -3390,7 +3399,7 @@ app.use(async (req, res, next) => {
   // ==========================================
   // AUTHENTICATION & ACCESS CONTROL
   // ==========================================
-  app.post(['/api/auth/login', '/api/admin/auth/login'], rateLimiter(60, 60000), async (req, res) => {
+  app.post(['/api/auth/login', '/api/admin/auth/login', '/api/admin/login'], rateLimiter(60, 60000), async (req, res) => {
     try {
       const { username, email, identifier: rawIdentifier, password } = req.body || {};
       const identifier = (rawIdentifier || username || email || '').trim().toLowerCase();
@@ -4235,9 +4244,10 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Events CRUD (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.post('/events', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res) => {
+  adminRouter.post('/events', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
     const body = req.body;
-    const slug = body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const title = (body.title || 'Untitled Event').trim();
+    const slug = body.slug ? body.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `event-${Date.now()}`;
     
     let pType: ParticipationType = body.participation_type || 'SOLO';
     if (!['SOLO', 'DUO', 'TEAM'].includes(pType)) {
@@ -4256,18 +4266,41 @@ app.use(async (req, res, next) => {
 
     const newEvent: Event = {
       ...body,
-      id: `evt-${Date.now()}`,
+      id: body.id || `evt-${Date.now()}`,
+      title,
       slug,
+      short_description: body.short_description || (body.description ? body.description.slice(0, 150) : ''),
       participation_type: pType,
       min_team_size: minTeam,
       max_team_size: maxTeam,
-      current_participants: body.current_participants || 0,
+      current_participants: Number(body.current_participants) || 0,
       maximum_participants: Number(body.maximum_participants) || 100,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    db.events.unshift(newEvent);
+    // 1. Direct Supabase write (primary database source of truth)
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { error: supaErr } = await client.from('events').upsert(newEvent);
+          if (supaErr) {
+            console.error('[Supabase Event Insert Error]:', supaErr.message);
+          }
+        } catch (err: any) {
+          console.error('[Supabase Event Insert Exception]:', err?.message);
+        }
+      }
+    }
+
+    // 2. In-memory / local sync
+    const existingIndex = db.events.findIndex((e) => e.id === newEvent.id || e.slug === newEvent.slug);
+    if (existingIndex !== -1) {
+      db.events[existingIndex] = newEvent;
+    } else {
+      db.events.unshift(newEvent);
+    }
     saveDatabase(db);
 
     logAdminAction(
@@ -4282,8 +4315,22 @@ app.use(async (req, res, next) => {
     res.status(201).json(newEvent);
   });
 
-  adminRouter.put('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res) => {
-    const index = db.events.findIndex((e) => e.id === req.params.id);
+  adminRouter.put('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let index = db.events.findIndex((e) => e.id === targetId || e.slug === targetId);
+
+    // If not in local memory, query Supabase
+    if (index === -1 && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
+        if (data) {
+          db.events.push(data);
+          index = db.events.length - 1;
+        }
+      }
+    }
+
     if (index === -1) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -4305,15 +4352,33 @@ app.use(async (req, res, next) => {
       maxTeam = Math.max(minTeam, Number(body.max_team_size ?? db.events[index].max_team_size) || 4);
     }
 
-    db.events[index] = {
+    const updatedEvent: Event = {
       ...db.events[index],
       ...body,
+      id: db.events[index].id,
       participation_type: pType,
       min_team_size: minTeam,
       max_team_size: maxTeam,
       updated_at: new Date().toISOString(),
     };
 
+    // 1. Direct Supabase write
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { error: supaErr } = await client.from('events').upsert(updatedEvent);
+          if (supaErr) {
+            console.error('[Supabase Event Update Error]:', supaErr.message);
+          }
+        } catch (err: any) {
+          console.error('[Supabase Event Update Exception]:', err?.message);
+        }
+      }
+    }
+
+    // 2. In-memory / local sync
+    db.events[index] = updatedEvent;
     saveDatabase(db);
 
     logAdminAction(
@@ -4340,8 +4405,20 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Manage Event Winners (SUPER_ADMIN, ADMIN, EDITOR)
-  adminRouter.put('/events/:id/winners', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res) => {
-    const event = db.events.find((e) => e.id === req.params.id);
+  adminRouter.put('/events/:id/winners', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let event = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    if (!event && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
+        if (data) {
+          event = data;
+          db.events.push(data);
+        }
+      }
+    }
+
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -4398,6 +4475,19 @@ app.use(async (req, res, next) => {
       event.results = results;
     }
     event.updated_at = new Date().toISOString();
+
+    // 1. Direct Supabase write
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('events').upsert(event);
+        } catch (err: any) {
+          console.error('[Supabase Winners Update Exception]:', err?.message);
+        }
+      }
+    }
+
     saveDatabase(db);
 
     logAdminAction(
@@ -4417,8 +4507,20 @@ app.use(async (req, res, next) => {
   });
 
   // Admin Remove a Specific Winner Position
-  adminRouter.delete('/events/:id/winners/:position', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req: AuthenticatedRequest, res) => {
-    const event = db.events.find((e) => e.id === req.params.id);
+  adminRouter.delete('/events/:id/winners/:position', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let event = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    if (!event && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
+        if (data) {
+          event = data;
+          db.events.push(data);
+        }
+      }
+    }
+
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -4433,6 +4535,19 @@ app.use(async (req, res, next) => {
       );
     }
     event.updated_at = new Date().toISOString();
+
+    // 1. Direct Supabase write
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('events').upsert(event);
+        } catch (err: any) {
+          console.error('[Supabase Winner Remove Exception]:', err?.message);
+        }
+      }
+    }
+
     saveDatabase(db);
 
     logAdminAction(
@@ -4449,16 +4564,41 @@ app.use(async (req, res, next) => {
 
   adminRouter.delete('/events/:id', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
     const targetId = req.params.id;
-    const target = db.events.find((e) => e.id === targetId || e.slug === targetId);
+    let target = db.events.find((e) => e.id === targetId || e.slug === targetId);
+
+    // If not in local memory, query Supabase
+    if (!target && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
+        if (data) {
+          target = data;
+        }
+      }
+    }
+
     if (!target) {
       res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
       return;
     }
-    const prevCount = db.events.length;
-    db.events = db.events.filter((e) => e.id !== target.id && e.slug !== target.id);
-    if (db.events.length === prevCount) {
-      res.status(404).json({ success: false, error: 'Event not found in database or already deleted.' });
-      return;
+
+    // 1. Remove from local memory FIRST so any concurrent sync will not re-insert it
+    db.events = db.events.filter((e) => e.id !== target.id && e.slug !== target.slug);
+
+    // 2. Delete from Supabase (Primary canonical source)
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { error: err1 } = await client.from('events').delete().eq('id', target.id);
+          if (err1) console.error('[Supabase Event Delete Error]:', err1.message);
+          if (target.slug) {
+            await client.from('events').delete().eq('slug', target.slug);
+          }
+        } catch (err: any) {
+          console.error('[Supabase Event Delete Error]:', err?.message);
+        }
+      }
     }
     
     // Also clean up registrations and checkins associated with this event
@@ -4467,10 +4607,6 @@ app.use(async (req, res, next) => {
     db.checkins = db.checkins.filter((c) => c.event_id !== target.id && !relatedRegIds.has(c.registration_id));
 
     saveDatabase(db);
-
-    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
-      await deleteSupabaseRecord('events', target.id);
-    }
 
     logAdminAction(
       'Event Deleted',
@@ -4484,12 +4620,26 @@ app.use(async (req, res, next) => {
     res.json({ success: true, message: `Event "${target.title}" successfully deleted.` });
   });
 
-  adminRouter.post('/events/:id/duplicate', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), (req, res) => {
-    const original = db.events.find((e) => e.id === req.params.id);
+  adminRouter.post('/events/:id/duplicate', requireRole('SUPER_ADMIN', 'ADMIN', 'EDITOR'), async (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.params.id;
+    let original = db.events.find((e) => e.id === targetId || e.slug === targetId);
+
+    // If not in local memory, check Supabase
+    if (!original && isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client.from('events').select('*').or(`id.eq.${targetId},slug.eq.${targetId}`).maybeSingle();
+        if (data) {
+          original = data;
+        }
+      }
+    }
+
     if (!original) {
       res.status(404).json({ error: 'Event to duplicate not found' });
       return;
     }
+
     const duplicated: Event = {
       ...original,
       id: `evt-${Date.now()}`,
@@ -4500,6 +4650,19 @@ app.use(async (req, res, next) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // 1. Direct Supabase write
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('events').upsert(duplicated);
+        } catch (err: any) {
+          console.error('[Supabase Event Duplicate Exception]:', err?.message);
+        }
+      }
+    }
+
     db.events.unshift(duplicated);
     saveDatabase(db);
     res.status(201).json(duplicated);

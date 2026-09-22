@@ -132,6 +132,13 @@ export default function App() {
     };
   }, []);
 
+  // Ensure public views stay in real-time sync with database whenever navigating to events or home
+  useEffect(() => {
+    if (currentPath === '/events' || currentPath === '/' || currentPath.startsWith('/events/')) {
+      loadClubData();
+    }
+  }, [currentPath]);
+
   const navigate = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);

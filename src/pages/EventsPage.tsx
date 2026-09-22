@@ -29,9 +29,9 @@ export const EventsPage: React.FC<EventsPageProps> = ({
       const matchStatus = selectedStatus === 'All' || e.status === selectedStatus;
       const matchSearch =
         !searchQuery.trim() ||
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.short_description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.venue.toLowerCase().includes(searchQuery.toLowerCase());
+        (e.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.short_description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.venue || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchStatus && matchSearch;
     });
   }, [events, selectedCategory, selectedStatus, searchQuery]);
