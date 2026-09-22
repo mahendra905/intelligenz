@@ -1131,7 +1131,14 @@ function loadDatabase(): DatabaseSchema {
           existingSuperAdmin.status = 'ACTIVE';
           needsSave = true;
         }
-        if (!existingSuperAdmin.password_hash || !existingSuperAdmin.salt) {
+        if (process.env.ADMIN_BOOTSTRAP_PASSWORD) {
+          const expectedHash = hashPassword(targetPassword, existingSuperAdmin.salt);
+          if (expectedHash !== existingSuperAdmin.password_hash) {
+            existingSuperAdmin.salt = crypto.randomBytes(16).toString('hex');
+            existingSuperAdmin.password_hash = hashPassword(targetPassword, existingSuperAdmin.salt);
+            needsSave = true;
+          }
+        } else if (!existingSuperAdmin.password_hash || !existingSuperAdmin.salt) {
           existingSuperAdmin.salt = crypto.randomBytes(16).toString('hex');
           existingSuperAdmin.password_hash = hashPassword(targetPassword, existingSuperAdmin.salt);
           needsSave = true;
@@ -1356,6 +1363,31 @@ async function ensureSupabaseHydrated(force = false): Promise<void> {
       }
       if (Array.isArray(supabaseData.admin_users) && supabaseData.admin_users.length > 0) {
         db.admin_users = supabaseData.admin_users;
+        if (process.env.ADMIN_BOOTSTRAP_PASSWORD) {
+          const targetEmail = (process.env.ADMIN_BOOTSTRAP_EMAIL || 'mahibittu2006@gmail.com').trim().toLowerCase().replace(/^["']|["']$/g, '');
+          const targetUsername = (process.env.ADMIN_BOOTSTRAP_USERNAME || 'superadmin').trim().toLowerCase().replace(/^["']|["']$/g, '');
+          const targetPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD.trim().replace(/^["']|["']$/g, '');
+          const supaAdmin = db.admin_users.find(
+            (u) => u.username.toLowerCase() === targetUsername || u.email.toLowerCase() === targetEmail
+          );
+          if (supaAdmin) {
+            const calculated = hashPassword(targetPassword, supaAdmin.salt);
+            if (calculated !== supaAdmin.password_hash) {
+              const newSalt = crypto.randomBytes(16).toString('hex');
+              const newHash = hashPassword(targetPassword, newSalt);
+              supaAdmin.salt = newSalt;
+              supaAdmin.password_hash = newHash;
+              supaAdmin.updated_at = new Date().toISOString();
+              const client = getSupabaseClient();
+              if (client) {
+                await client
+                  .from('admin_users')
+                  .update({ salt: newSalt, password_hash: newHash, updated_at: supaAdmin.updated_at })
+                  .eq('id', supaAdmin.id);
+              }
+            }
+          }
+        }
       }
       if (supabaseData.settings && Object.keys(supabaseData.settings).length > 0) {
         db.settings = supabaseData.settings;
@@ -3358,7 +3390,7 @@ app.use(async (req, res, next) => {
   // ==========================================
   // AUTHENTICATION & ACCESS CONTROL
   // ==========================================
-  app.post(['/api/auth/login', '/api/admin/auth/login'], rateLimiter(60, 60000), (req, res) => {
+  app.post(['/api/auth/login', '/api/admin/auth/login'], rateLimiter(60, 60000), async (req, res) => {
     try {
       const { username, email, identifier: rawIdentifier, password } = req.body || {};
       const identifier = (rawIdentifier || username || email || '').trim().toLowerCase();
@@ -3375,12 +3407,52 @@ app.use(async (req, res, next) => {
         return;
       }
 
-      // Find admin user in database by username or email
-      const adminUser = db.admin_users.find(
-        (u) =>
-          u.username.toLowerCase() === identifier ||
-          u.email.toLowerCase() === identifier
-      );
+      let adminUser: AdminUserRecord | null = null;
+
+      // 1. Direct Supabase Query: Read directly from Supabase public.admin_users in production
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const client = getSupabaseClient();
+        if (client) {
+          try {
+            const { data, error } = await client
+              .from('admin_users')
+              .select('*')
+              .or(`username.ilike.${identifier},email.ilike.${identifier}`)
+              .limit(1);
+
+            if (error) {
+              console.error('[Auth Error] Supabase admin_users query failed:', error.message);
+              res.status(500).json({
+                success: false,
+                error: 'Authentication service temporarily unavailable',
+                message: 'Authentication service temporarily unavailable',
+              });
+              return;
+            }
+
+            if (Array.isArray(data) && data.length > 0) {
+              adminUser = data[0];
+            }
+          } catch (dbErr: any) {
+            console.error('[Auth Error] Supabase connectivity exception during login:', dbErr?.message);
+            res.status(500).json({
+              success: false,
+              error: 'Authentication service temporarily unavailable',
+              message: 'Authentication service temporarily unavailable',
+            });
+            return;
+          }
+        }
+      }
+
+      // Fallback only if Supabase is unconfigured
+      if (!adminUser && !isSupabaseConfigured()) {
+        adminUser = db.admin_users.find(
+          (u) =>
+            u.username.toLowerCase() === identifier ||
+            u.email.toLowerCase() === identifier
+        ) || null;
+      }
 
       if (!adminUser) {
         console.warn(`[Auth] Login rejected: Unknown administrator identifier "${identifier}".`);
@@ -3438,8 +3510,31 @@ app.use(async (req, res, next) => {
       }
 
       // Update login timestamp
-      adminUser.last_login_at = new Date().toISOString();
-      adminUser.updated_at = new Date().toISOString();
+      const loginTime = new Date().toISOString();
+      adminUser.last_login_at = loginTime;
+      adminUser.updated_at = loginTime;
+
+      if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+        const client = getSupabaseClient();
+        if (client) {
+          try {
+            await client.from('admin_users').update({
+              last_login_at: loginTime,
+              updated_at: loginTime,
+            }).eq('id', adminUser.id);
+          } catch (updateErr: any) {
+            console.warn('[Auth] Failed to update last_login_at in Supabase:', updateErr?.message);
+          }
+        }
+      }
+
+      // Synchronize in-memory cache
+      const cachedIdx = db.admin_users.findIndex((u) => u.id === adminUser!.id);
+      if (cachedIdx !== -1) {
+        db.admin_users[cachedIdx] = { ...db.admin_users[cachedIdx], ...adminUser };
+      } else {
+        db.admin_users.push(adminUser);
+      }
       saveDatabase(db);
 
       // Invalidate any previous sessions for this administrator so each login starts with a fresh, independent session
@@ -3800,7 +3895,7 @@ app.use(async (req, res, next) => {
     res.json(sanitized);
   });
 
-  adminRouter.post('/admins', requireRole('SUPER_ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.post('/admins', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res) => {
     const { name, username, email, role, password, temporaryPassword, status } = req.body;
     const adminName = (name || '').trim();
     const adminUsername = (username || '').trim().toLowerCase();
@@ -3852,6 +3947,10 @@ app.use(async (req, res, next) => {
     db.admin_users.push(newAdmin);
     saveDatabase(db);
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('admin_users', newAdmin);
+    }
+
     logAdminAction(
       'Admin Created',
       'AdminUser',
@@ -3879,7 +3978,7 @@ app.use(async (req, res, next) => {
     });
   });
 
-  adminRouter.put('/admins/:id', requireRole('SUPER_ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.put('/admins/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res) => {
     const targetId = req.params.id;
     const userIndex = db.admin_users.findIndex((u) => u.id === targetId);
     if (userIndex === -1) {
@@ -3935,6 +4034,10 @@ app.use(async (req, res, next) => {
     existingUser.updated_at = new Date().toISOString();
     saveDatabase(db);
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('admin_users', existingUser);
+    }
+
     logAdminAction(
       'Admin Updated',
       'AdminUser',
@@ -3963,7 +4066,7 @@ app.use(async (req, res, next) => {
     });
   });
 
-  const handleAdminPasswordUpdate = (req: AuthenticatedRequest, res: any) => {
+  const handleAdminPasswordUpdate = async (req: AuthenticatedRequest, res: any) => {
     const targetId = req.params.id;
     const user = db.admin_users.find((u) => u.id === targetId);
     if (!user) {
@@ -3986,6 +4089,10 @@ app.use(async (req, res, next) => {
     user.updated_at = new Date().toISOString();
     saveDatabase(db);
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('admin_users', user);
+    }
+
     // Invalidate any active session for this user so they must log in with new password
     invalidateUserSessions(targetId);
 
@@ -4007,7 +4114,7 @@ app.use(async (req, res, next) => {
   adminRouter.post('/admins/:id/password', requireRole('SUPER_ADMIN'), handleAdminPasswordUpdate);
   adminRouter.post('/admins/:id/reset-password', requireRole('SUPER_ADMIN'), handleAdminPasswordUpdate);
 
-  adminRouter.post('/admins/:id/status', requireRole('SUPER_ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.post('/admins/:id/status', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res) => {
     const targetId = req.params.id;
     const user = db.admin_users.find((u) => u.id === targetId);
     if (!user) {
@@ -4036,6 +4143,10 @@ app.use(async (req, res, next) => {
     }
     saveDatabase(db);
 
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await upsertSupabaseRecord('admin_users', user);
+    }
+
     logAdminAction(
       `Admin Status: ${status}`,
       'AdminUser',
@@ -4059,7 +4170,7 @@ app.use(async (req, res, next) => {
     });
   });
 
-  adminRouter.delete('/admins/:id', requireRole('SUPER_ADMIN'), (req: AuthenticatedRequest, res) => {
+  adminRouter.delete('/admins/:id', requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res) => {
     const targetId = req.params.id;
     const user = db.admin_users.find((u) => u.id === targetId);
     if (!user) {
@@ -4083,6 +4194,10 @@ app.use(async (req, res, next) => {
     db.admin_users = db.admin_users.filter((u) => u.id !== targetId);
     invalidateUserSessions(targetId);
     saveDatabase(db);
+
+    if (isSupabaseConfigured() && (await checkSupabaseTablesExist())) {
+      await deleteSupabaseRecord('admin_users', targetId);
+    }
 
     logAdminAction(
       'Admin Deleted',

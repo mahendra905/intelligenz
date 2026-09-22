@@ -558,60 +558,6 @@
   ],
   "projects": [
     {
-      "id": "proj-medvision",
-      "title": "MedVision: Automated Chest X-Ray Pathology Screener",
-      "name": "MedVision: Automated Chest X-Ray Pathology Screener",
-      "slug": "medvision-chest-xray-ai-diagnostics",
-      "description": "Deep learning diagnostic assistant classifying 14 common thoracic conditions with Grad-CAM visual heatmaps.",
-      "short_description": "Clinical radiologist assistant with localized pathology heatmaps.",
-      "category": "Healthcare AI",
-      "tech_stack": [
-        "PyTorch",
-        "TorchXRayVision",
-        "FastAPI",
-        "Next.js",
-        "Docker"
-      ],
-      "technologies": [],
-      "team_members": [
-        "Ananya Sharma",
-        "Rahul Varma"
-      ],
-      "github_url": "https://github.com/intelligenz-drkvsrit",
-      "demo_url": "https://intelligenz.drkvsrit.ac.in",
-      "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
-      "featured": true,
-      "status": "Completed",
-      "date": "2026-07"
-    },
-    {
-      "id": "proj-campusgpt",
-      "title": "CampusGPT: College Knowledge Engine & Student Copilot",
-      "name": "CampusGPT: College Knowledge Engine & Student Copilot",
-      "slug": "campusgpt-rag-student-assistant",
-      "description": "Retrieval-augmented conversational agent indexed on syllabi, academic calendars, timetables, and college regulations.",
-      "short_description": "RAG-based campus assistant answering student queries in real time.",
-      "category": "Generative AI",
-      "tech_stack": [
-        "LangChain",
-        "Gemini 1.5 Pro",
-        "ChromaDB",
-        "TypeScript",
-        "Tailwind CSS"
-      ],
-      "technologies": [],
-      "team_members": [
-        "K. V. Sai Kiran",
-        "B. Divya Sri"
-      ],
-      "github_url": "https://github.com/intelligenz-drkvsrit",
-      "demo_url": "https://intelligenz.drkvsrit.ac.in",
-      "image_url": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
-      "featured": true,
-      "status": "Completed",
-      "date": "2026-06"
-    },
-    {
       "id": "proj-smart-attendance",
       "title": "Facial Recognition & QR Smart Attendance Terminal",
       "name": "Facial Recognition & QR Smart Attendance Terminal",
@@ -692,6 +638,60 @@
       "featured": true,
       "status": "Active Development",
       "date": "2026-08"
+    },
+    {
+      "id": "proj-medvision",
+      "title": "MedVision: Automated Chest X-Ray Pathology Screener",
+      "name": "MedVision: Automated Chest X-Ray Pathology Screener",
+      "slug": "medvision-chest-xray-ai-diagnostics",
+      "description": "Deep learning diagnostic assistant classifying 14 common thoracic conditions with Grad-CAM visual heatmaps.",
+      "short_description": "Clinical radiologist assistant with localized pathology heatmaps.",
+      "category": "Healthcare AI",
+      "tech_stack": [
+        "PyTorch",
+        "TorchXRayVision",
+        "FastAPI",
+        "Next.js",
+        "Docker"
+      ],
+      "technologies": [],
+      "team_members": [
+        "Ananya Sharma",
+        "Rahul Varma"
+      ],
+      "github_url": "https://github.com/intelligenz-drkvsrit",
+      "demo_url": "https://intelligenz.drkvsrit.ac.in",
+      "image_url": "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
+      "featured": true,
+      "status": "Completed",
+      "date": "2026-07"
+    },
+    {
+      "id": "proj-campusgpt",
+      "title": "CampusGPT: College Knowledge Engine & Student Copilot",
+      "name": "CampusGPT: College Knowledge Engine & Student Copilot",
+      "slug": "campusgpt-rag-student-assistant",
+      "description": "Retrieval-augmented conversational agent indexed on syllabi, academic calendars, timetables, and college regulations.",
+      "short_description": "RAG-based campus assistant answering student queries in real time.",
+      "category": "Generative AI",
+      "tech_stack": [
+        "LangChain",
+        "Gemini 1.5 Pro",
+        "ChromaDB",
+        "TypeScript",
+        "Tailwind CSS"
+      ],
+      "technologies": [],
+      "team_members": [
+        "K. V. Sai Kiran",
+        "B. Divya Sri"
+      ],
+      "github_url": "https://github.com/intelligenz-drkvsrit",
+      "demo_url": "https://intelligenz.drkvsrit.ac.in",
+      "image_url": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
+      "featured": true,
+      "status": "Completed",
+      "date": "2026-06"
     }
   ],
   "gallery": [
@@ -875,21 +875,6 @@
   ],
   "admin_users": [
     {
-      "id": "usr-admin-primary",
-      "name": "Super Administrator",
-      "username": "superadmin",
-      "email": "mahibittu2006@gmail.com",
-      "password_hash": "a30e12053228a05c742c3df404c0df2c5a0899f8d1676882bbd512ee10cf6b6a482e987c93e4307f9c968fbc6bb5aa8a960924e2be85542f5e14a7eb06df1d38",
-      "salt": "a19fd3b7849e7b25db2e666991ebfc1c",
-      "role": "SUPER_ADMIN",
-      "status": "ACTIVE",
-      "must_change_password": false,
-      "created_at": "2026-09-22T08:01:57.531618+00:00",
-      "updated_at": "2026-09-22T08:01:57.531618+00:00",
-      "last_login_at": null,
-      "created_by": "System"
-    },
-    {
       "id": "usr-admin-1788244694807-2mix",
       "name": "Mahesh M",
       "username": "mahesh",
@@ -902,6 +887,21 @@
       "created_at": "2026-09-22T08:01:57.531618+00:00",
       "updated_at": "2026-09-22T08:01:57.531618+00:00",
       "last_login_at": null,
+      "created_by": "System"
+    },
+    {
+      "id": "usr-admin-primary",
+      "name": "Super Administrator",
+      "username": "superadmin",
+      "email": "mahibittu2006@gmail.com",
+      "password_hash": "29487e0b5143802d0342c739b001aff570268c7800546da31e91ca9815dc7213d28e40a7615dd4bddc0ea5d386e74cf2a39f72782d5ef428fac4cc91d5fbbec5",
+      "salt": "35fbe64a70e10d11a48f4094bae8e7a4",
+      "role": "SUPER_ADMIN",
+      "status": "ACTIVE",
+      "must_change_password": false,
+      "created_at": "2026-09-22T08:01:57.531618+00:00",
+      "updated_at": "2026-09-22T08:47:27.463Z",
+      "last_login_at": "2026-09-22T08:47:27.463Z",
       "created_by": "System"
     }
   ],
@@ -1046,6 +1046,66 @@
   "newsletter_broadcasts": [],
   "checkins": [],
   "audit_logs": [
+    {
+      "id": "log-1790066847498-pciho",
+      "action": "Admin Logout",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator session signed out for mahibittu2006@gmail.com",
+      "timestamp": "2026-09-22T08:47:27.498Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790066847481-ehk4y",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "nonexistent_admin_123",
+      "admin_email": "nonexistent_admin_123",
+      "details": "Failed login attempt for unknown account 'nonexistent_admin_123'",
+      "timestamp": "2026-09-22T08:47:27.481Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790066847476-wxzg8",
+      "action": "Admin Login Failed",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Failed login attempt: Incorrect password for 'superadmin'",
+      "timestamp": "2026-09-22T08:47:27.476Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790066847465-eyglw",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-22T08:47:27.465Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790066847458-pizku",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-22T08:47:27.458Z",
+      "ip_address": "127.0.0.1"
+    },
+    {
+      "id": "log-1790066847444-t0sgs",
+      "action": "Admin Login Success",
+      "entity_type": "Auth",
+      "entity_id": "usr-admin-primary",
+      "admin_email": "mahibittu2006@gmail.com",
+      "details": "Administrator Super Administrator (SUPER_ADMIN) signed in successfully",
+      "timestamp": "2026-09-22T08:47:27.444Z",
+      "ip_address": "127.0.0.1"
+    },
     {
       "id": "log-1790064967723-gmm3k",
       "action": "Registration Deleted",
