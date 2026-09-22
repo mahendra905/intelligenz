@@ -529,7 +529,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">Attendance Ticket:</span>
                     <span className="font-mono font-bold text-[#00E5FF] text-sm bg-[#00E5FF]/10 px-2.5 py-0.5 rounded border border-[#00E5FF]/20">
-                      {successData.ticket_code || successData.registration?.ticket_code || `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`}
+                      {successData.ticket_code || successData.registration?.ticket_code || (successData.registration?.id ? `TKT-${String(successData.registration.id).slice(-6).toUpperCase()}` : 'TKT-PASS')}
                     </span>
                   </div>
                   <button
@@ -538,7 +538,7 @@ export const EventRegisterModal: React.FC<EventRegisterModalProps> = ({
                       handleCopyTicketCode(
                         successData.ticket_code ||
                           successData.registration?.ticket_code ||
-                          `TKT-${successData.registration?.id?.slice(-6)?.toUpperCase()}`
+                          (successData.registration?.id ? `TKT-${String(successData.registration.id).slice(-6).toUpperCase()}` : 'TKT-PASS')
                       )
                     }
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141824] hover:bg-[#1C2233] border border-[#222838] text-[11px] text-[#9CA3AF] hover:text-white transition-all cursor-pointer"

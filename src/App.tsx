@@ -187,7 +187,7 @@ export default function App() {
             onBack={() => navigate('/events')}
             onRegister={(ev) => setRegisteringEvent(ev)}
             onSelectEvent={handleSelectEvent}
-            relatedEvents={events.filter((e) => e.id !== event.id).slice(0, 3)}
+            relatedEvents={(events || []).filter((e) => e.id !== event.id).slice(0, 3)}
           />
         );
       }

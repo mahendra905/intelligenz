@@ -268,7 +268,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate, settings: propSe
                 <div className="p-4 rounded-xl bg-[#0A0B0E] border border-[#1A1C23] text-left text-xs space-y-2 text-[#9CA3AF] max-w-md mx-auto">
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Application ID:</span>
-                    <span className="font-mono text-white">{submitted.id.slice(0, 8)}</span>
+                    <span className="font-mono text-white">{(submitted.id || '').slice(0, 8) || 'SUBMITTED'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Department:</span>
@@ -276,7 +276,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({ onNavigate, settings: propSe
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Domains:</span>
-                    <span className="text-[#00E5FF] font-semibold">{submitted.interested_domains.join(', ')}</span>
+                    <span className="text-[#00E5FF] font-semibold">{(submitted.interested_domains || []).join(', ')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Next Step:</span>

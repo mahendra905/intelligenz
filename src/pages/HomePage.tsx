@@ -46,9 +46,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   onSelectAnnouncement,
   onSelectProject,
 }) => {
-  const upcomingEvents = events.slice(0, 3);
-  const latestAnnouncements = announcements.slice(0, 3);
-  const featuredProjects = projects.slice(0, 3);
+  const upcomingEvents = (events || []).slice(0, 3);
+  const latestAnnouncements = (announcements || []).slice(0, 3);
+  const featuredProjects = (projects || []).slice(0, 3);
 
   return (
     <div className="space-y-16 pb-20">
@@ -323,27 +323,34 @@ export const HomePage: React.FC<HomePageProps> = ({
             >
               <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#0A0B0E]">
                 <img
-                  src={proj.image_url}
-                  alt={proj.name}
+                  src={proj.image_url || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80'}
+                  alt={proj.name || proj.title || 'Project'}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0D1017] via-transparent to-transparent" />
                 <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#0A0B0E]/90 text-[#00E5FF] border border-[#00E5FF]/30 uppercase tracking-wider">
-                  {proj.category}
+                  {proj.category || 'AI Project'}
                 </span>
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between text-left">
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-white font-['Outfit'] group-hover:text-[#00E5FF] transition-colors line-clamp-2">
-                    {proj.name}
+                    {proj.name || proj.title || 'Untitled Project'}
                   </h3>
                   <p className="text-xs text-[#9CA3AF] mt-2 line-clamp-2 leading-relaxed">
-                    {proj.short_description}
+                    {proj.short_description || proj.description || 'IntelliGenZ technical research project.'}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    {proj.tech_stack.slice(0, 4).map((tech, i) => (
+                    {(Array.isArray(proj.tech_stack)
+                      ? proj.tech_stack
+                      : Array.isArray(proj.technologies)
+                      ? proj.technologies
+                      : typeof proj.tech_stack === 'string'
+                      ? (proj.tech_stack as string).split(',').map((s) => s.trim()).filter(Boolean)
+                      : []
+                    ).slice(0, 4).map((tech, i) => (
                       <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0A0B0E] text-[#6B7280] border border-[#1A1C23]">
                         {tech}
                       </span>

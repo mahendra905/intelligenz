@@ -471,7 +471,7 @@ export const AdminManagementTab: React.FC = () => {
                                 : 'bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20'
                             }`}
                           >
-                            {admin.name.slice(0, 2)}
+                            {(admin.name || 'AD').slice(0, 2)}
                           </div>
                           <div>
                             <div className="font-bold text-white flex items-center gap-2">

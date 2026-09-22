@@ -317,7 +317,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-white truncate" title={fileDetails?.name || value}>
-                  {fileDetails?.name || (value.startsWith('/uploads/') ? value.replace('/uploads/', '') : value.slice(0, 35) + '...')}
+                  {fileDetails?.name || (value && value.startsWith('/uploads/') ? value.replace('/uploads/', '') : (value || '').slice(0, 35) + '...')}
                 </p>
                 <div className="flex items-center gap-2 text-[11px] text-[#6B7280]">
                   {fileDetails?.sizeFormatted ? (

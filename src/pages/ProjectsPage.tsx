@@ -23,12 +23,13 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ projects, onNavigate
   ];
 
   const filteredProjects = useMemo(() => {
+    if (!Array.isArray(projects)) return [];
     if (selectedCategory === 'All') return projects;
     return projects.filter(
       (p) =>
         p.category === selectedCategory ||
-        (p.tech_stack && p.tech_stack.includes(selectedCategory)) ||
-        (p.technologies && p.technologies.includes(selectedCategory))
+        (Array.isArray(p.tech_stack) && p.tech_stack.includes(selectedCategory)) ||
+        (Array.isArray(p.technologies) && p.technologies.includes(selectedCategory))
     );
   }, [projects, selectedCategory]);
 
@@ -83,7 +84,13 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ projects, onNavigate
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
-            const techList = project.technologies || project.tech_stack || [];
+            const techList = Array.isArray(project.technologies)
+              ? project.technologies
+              : Array.isArray(project.tech_stack)
+              ? project.tech_stack
+              : typeof project.tech_stack === 'string'
+              ? (project.tech_stack as string).split(',').map((s) => s.trim()).filter(Boolean)
+              : [];
             return (
               <div
                 key={project.id}
@@ -91,14 +98,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ projects, onNavigate
               >
                 <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#0A0B0E]">
                   <img
-                    src={project.image_url}
-                    alt={project.name}
+                    src={project.image_url || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80'}
+                    alt={project.name || project.title || 'Project'}
                     loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0D1017] via-transparent to-transparent" />
                   <span className="absolute top-3 left-3 px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-[#0A0B0E]/90 text-[#00E5FF] border border-[#00E5FF]/30 uppercase tracking-wider">
-                    {project.category}
+                    {project.category || 'AI Project'}
                   </span>
                   <span className="absolute top-3 right-3 px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-[#0A0B0E]/90 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
                     {project.status || 'Active'}
@@ -108,10 +115,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ projects, onNavigate
                 <div className="p-6 flex-1 flex flex-col justify-between text-left">
                   <div>
                     <h3 className="text-lg font-bold text-white font-['Outfit'] group-hover:text-[#00E5FF] transition-colors leading-snug">
-                      {project.name}
+                      {project.name || project.title || 'Untitled Project'}
                     </h3>
                     <p className="text-xs text-[#9CA3AF] mt-2.5 line-clamp-3 leading-relaxed">
-                      {project.description}
+                      {project.description || project.short_description || 'Student technical research project.'}
                     </p>
 
                     {/* Tech Stack */}
